@@ -12,6 +12,7 @@ st.set_page_config(
 DESIGN_CSS = """
 <style>
     @import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap');
+    @import url('https://fonts.googleapis.com/icon?family=Material+Icons');
 
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
@@ -20,13 +21,13 @@ DESIGN_CSS = """
     html, body, .stMarkdown, .stText, .stButton button, .stTextInput input, .stTextArea textarea, .stSelectbox div, [data-testid="stSidebar"] * {
         font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
     }
-    /* Restore Material Icons font on icon elements to prevent ligature text leakage */
-    .st-emotion-cache-1dbjc6n,
+    /* Material Icons elements: restore icon font to prevent ligature text leakage */
+    [data-testid="stSidebarCollapseButton"],
     [data-testid="stSidebarCollapseButton"] *,
-    [data-testid="baseButton-header"] *,
-    span[class*="material-icons"],
-    span[class*="st-emotion"] {
-        font-family: 'Material Icons', 'DM Sans', sans-serif !important;
+    button[data-testid="baseButton-header"],
+    button[data-testid="baseButton-header"] *,
+    .material-icons {
+        font-family: 'Material Icons' !important;
     }
 
     :root {

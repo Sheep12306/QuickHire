@@ -27,6 +27,7 @@ INTERVIEW_SCOPES = ["仅技术面试", "仅HR面试", "全题型混合"]
 STYLE_CSS = """
 <style>
     @import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap');
+    @import url('https://fonts.googleapis.com/icon?family=Material+Icons');
 
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
@@ -35,11 +36,14 @@ STYLE_CSS = """
     html, body, .stMarkdown, .stText, .stButton button, .stTextInput input, .stTextArea textarea, .stSelectbox div, [data-testid="stSidebar"] * {
         font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
     }
-    /* Restore Material Icons font on icon elements to prevent ligature text leakage */
+    /* Material Icons elements: restore icon font to prevent ligature text leakage */
+    [data-testid="stSidebarCollapseButton"],
     [data-testid="stSidebarCollapseButton"] *,
-    [data-testid="baseButton-header"] *,
-    span[class*="material-icons"] {
-        font-family: 'Material Icons', 'DM Sans', sans-serif !important;
+    button[data-testid="baseButton-header"],
+    button[data-testid="baseButton-header"] *,
+    .material-icons,
+    span[data-testid="stMarkdown"] span {
+        font-family: 'Material Icons' !important;
     }
 
     /* ── Hide Streamlit auto-generated nav (using manual page_link instead) ── */
