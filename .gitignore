@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
@@ -216,3 +217,33 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+=======
+# Environment & secrets
+.env
+*.env
+!.env.example
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.pkl
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude / Agent
+.claude/
+.agent/
+
+# Misc
+*.log
+>>>>>>> 90f999e (Initial commit: QuickHire AI resume optimizer)
