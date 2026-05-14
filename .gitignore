@@ -1,0 +1,28 @@
+# Environment & secrets
+.env
+*.env
+!.env.example
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.pkl
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude / Agent
+.claude/
+.agent/
+
+# Misc
+*.log
