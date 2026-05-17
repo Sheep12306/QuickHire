@@ -1,0 +1,522 @@
+<template>
+  <div class="optimizer-page">
+    <NavBar />
+    <main class="main-content">
+      <el-alert v-if="!auth.isLoggedIn" type="info" :closable="false" show-icon>
+        当前为体验模式，登录后可保存优化历史记录。
+        <el-button text type="primary" @click="$router.push('/login')">立即登录</el-button>
+      </el-alert>
+
+      <!-- Resume Input Section -->
+      <div class="input-section">
+        <el-input
+          v-model="store.resumeText"
+          type="textarea"
+          :rows="8"
+          placeholder="在此粘贴您的简历内容，或拖拽文件到下方上传区域..."
+          size="large"
+        />
+        <div class="input-actions">
+          <el-upload
+            drag
+            :auto-upload="false"
+            :show-file-list="false"
+            @change="handleFileUpload"
+            accept=".txt,.md,.docx,.pdf"
+            class="upload-compact"
+          >
+            <div class="upload-inline">
+              <span>📎</span>
+              <span>拖拽或点击上传</span>
+            </div>
+          </el-upload>
+          <el-button @click="loadDemo">📋 加载示例</el-button>
+          <el-input
+            v-model="store.targetPosition"
+            placeholder="* 目标岗位（必填，如：Python开发工程师）"
+            style="width: 260px"
+            clearable
+            :class="{ 'is-required': !store.targetPosition }"
+          />
+        </div>
+      </div>
+
+      <!-- Step Indicator -->
+      <div class="step-row">
+        <span class="step-dot" :class="{ active: store.hasInput, done: store.hasOptimized }">1 输入简历</span>
+        <span class="step-line"></span>
+        <span class="step-dot" :class="{ active: store.hasOptimized, done: store.hasAnalysis }">2 AI 优化</span>
+        <span class="step-line"></span>
+        <span class="step-dot" :class="{ active: store.hasQuestions }">3 面试题</span>
+      </div>
+
+      <!-- Tabs -->
+      <el-tabs v-model="activeTab" type="border-card">
+        <!-- Tab 1: Optimize Resume -->
+        <el-tab-pane label="📄 简历优化" name="optimize">
+          <div class="tab-config">
+            <span>优化风格：</span>
+            <el-select v-model="store.optimizationStyle" style="width: 160px">
+              <el-option v-for="s in styles" :key="s" :label="s" :value="s" />
+            </el-select>
+            <el-button type="primary" @click="handleOptimize" :loading="store.isOptimizing" :disabled="!store.hasInput">
+              开始优化简历
+            </el-button>
+            <el-button @click="store.clearOptimized()" v-if="store.hasOptimized">清空结果</el-button>
+          </div>
+
+          <div v-if="store.hasOptimized" class="result-card">
+            <!-- Analysis Section -->
+            <div class="analysis-section">
+              <div class="analysis-header" @click="showAnalysis = !showAnalysis">
+                <span>📊 优化分析与建议</span>
+                <span class="toggle-icon">{{ showAnalysis ? '▲ 收起' : '▼ 展开' }}</span>
+              </div>
+              <div v-show="showAnalysis">
+                <div class="highlight-box comparison-box">
+                  <div class="box-header">
+                    <span>📊 优化对比 — 改了哪些地方</span>
+                    <el-button text size="small" @click.stop="copyText(store.optimizedResult.comparison)">复制</el-button>
+                  </div>
+                  <pre>{{ store.optimizedResult?.comparison || '（AI 未返回优化对比，可尝试重新优化）' }}</pre>
+                </div>
+                <div class="highlight-box hr-box">
+                  <div class="box-header">
+                    <span>💼 HR 视角点评 — 投递与面试策略</span>
+                    <el-button text size="small" @click.stop="copyText(store.optimizedResult.hr_review)">复制</el-button>
+                  </div>
+                  <pre>{{ store.optimizedResult?.hr_review || '（AI 未返回 HR 点评，可尝试重新优化）' }}</pre>
+                </div>
+              </div>
+            </div>
+
+            <!-- Clean Optimized Resume -->
+            <div class="resume-output">
+              <div class="resume-output-header">
+                <span>✨ 优化后简历（可复制/导出投递）</span>
+                <div class="resume-output-actions">
+                  <el-button type="primary" @click="copyText(store.optimizedResult.optimized_text)">📋 复制简历</el-button>
+                  <el-button type="success" @click="exportPdf">📄 导出 PDF</el-button>
+                </div>
+              </div>
+              <div class="optimized-text">
+                <pre>{{ store.optimizedResult.optimized_text }}</pre>
+              </div>
+            </div>
+          </div>
+
+          <el-empty v-if="!store.hasOptimized && !store.isOptimizing" description="输入简历和目标岗位，点击「开始优化简历」" />
+        </el-tab-pane>
+
+        <!-- Tab 2: AI Deep Analysis -->
+        <el-tab-pane label="🔍 AI 深度分析" name="analyze">
+          <div class="tab-config">
+            <el-button @click="store.scan()" :disabled="!store.hasInput">
+              ⚡ 快速扫描（本地算法）
+            </el-button>
+            <el-button type="primary" @click="store.analyze()" :loading="store.isAnalyzing" :disabled="!store.hasInput">
+              🤖 AI 深度分析
+            </el-button>
+            <el-button @click="store.clearAnalysis()" v-if="store.hasAnalysis">清空结果</el-button>
+          </div>
+
+          <div v-if="store.hasAnalysis" class="result-card">
+            <!-- Overall Score -->
+            <div v-if="store.analysisResult.overall_score" class="score-row">
+              <div class="score-circle" :class="scoreGrade(store.analysisResult.overall_score)">
+                {{ store.analysisResult.overall_score }}
+              </div>
+              <span class="score-label">综合评分</span>
+            </div>
+
+            <!-- Quick Scan: Defects & Suggestions -->
+            <div v-if="store.analysisResult.defects?.length" class="section">
+              <h3>🔎 发现的问题 ({{ store.analysisResult.defects.length }})</h3>
+              <div v-for="(d, i) in store.analysisResult.defects" :key="i" class="defect-item">
+                <el-tag :type="d.severity === 'high' ? 'danger' : d.severity === 'medium' ? 'warning' : 'info'" size="small">
+                  {{ d.severity === 'high' ? '严重' : d.severity === 'medium' ? '中等' : '轻微' }}
+                </el-tag>
+                <span>{{ d.description }}</span>
+              </div>
+            </div>
+
+            <div v-if="store.analysisResult.suggestions?.length" class="section">
+              <h3>💡 优化建议</h3>
+              <ul class="suggestion-list">
+                <li v-for="(s, i) in store.analysisResult.suggestions" :key="i">{{ s }}</li>
+              </ul>
+            </div>
+
+            <!-- AI Diagnosis: Multi-dimension scores -->
+            <div v-if="diagnosisHasContent" class="section">
+              <h3>🤖 AI 多维诊断</h3>
+
+              <!-- Dimension Scores -->
+              <div v-if="dimensionScores.length" class="dimension-grid">
+                <div v-for="d in dimensionScores" :key="d.key" class="dim-card">
+                  <div class="dim-name">{{ d.label }}</div>
+                  <el-progress :percentage="d.value" :color="dimColor(d.value)" :stroke-width="12" />
+                  <div class="dim-score">{{ d.value }}分</div>
+                </div>
+              </div>
+
+              <!-- Keyword Match -->
+              <div v-if="diagnosisData?.diagnosis?.keyword_match" class="section">
+                <h4>🎯 关键词匹配</h4>
+                <div class="keyword-row">
+                  <span v-for="k in diagnosisData.diagnosis.keyword_match.matched" :key="k" class="kw-tag kw-matched">{{ k }}</span>
+                  <span v-for="k in diagnosisData.diagnosis.keyword_match.missing" :key="k" class="kw-tag kw-missing">{{ k }}</span>
+                </div>
+              </div>
+
+              <!-- Weaknesses from AI -->
+              <div v-if="diagnosisData?.weaknesses?.length" class="section">
+                <h4>⚠️ 薄弱环节</h4>
+                <div v-for="(w, i) in diagnosisData.weaknesses" :key="i" class="weak-item">
+                  <strong>{{ w.area || w }}</strong>
+                  <p>{{ w.description || '' }}</p>
+                  <p v-if="w.suggestion" class="suggestion-text">{{ w.suggestion }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <el-empty v-if="!store.hasAnalysis && !store.isAnalyzing" description="点击「AI深度分析」或「快速扫描」" />
+        </el-tab-pane>
+
+        <!-- Tab 3: Interview Questions (Position-based) -->
+        <el-tab-pane label="📋 面试题生成" name="questions">
+          <div class="tab-config">
+            <el-input v-model="store.targetPosition" placeholder="* 目标岗位" style="width:200px" />
+            <el-select v-model="qDifficulty" style="width: 120px">
+              <el-option v-for="d in difficulties" :key="d" :label="d" :value="d" />
+            </el-select>
+            <el-select v-model="qTypes" multiple style="width: 260px" placeholder="题目类型">
+              <el-option v-for="t in questionTypes" :key="t" :label="t" :value="t" />
+            </el-select>
+            <span>数量：</span>
+            <el-input-number v-model="qCount" :min="3" :max="15" />
+            <el-button type="primary" @click="handleGenQuestions" :loading="store.isGenerating">
+              生成面试题
+            </el-button>
+            <el-button @click="store.clearQuestions()" v-if="store.hasQuestions">清空</el-button>
+            <el-button v-if="store.hasQuestions" type="success" @click="handleSaveQuestions" :loading="savingQuestions">
+              💾 存入题库
+            </el-button>
+          </div>
+
+          <div v-if="store.hasQuestions" class="question-list">
+            <div v-for="(q, i) in store.questions" :key="i" class="question-card">
+              <div class="q-header">
+                <span class="q-number">#{{ i + 1 }}</span>
+                <el-tag v-if="q.type" size="small" effect="plain">{{ q.type }}</el-tag>
+                <el-tag v-if="q.difficulty" size="small" effect="plain" style="margin-left:4px">{{ q.difficulty }}</el-tag>
+                <span style="margin-left:0.5rem; flex:1">{{ q.question || q }}</span>
+                <el-button
+                  :type="q._fav ? 'warning' : 'default'" size="small" circle
+                  @click="q._fav = !q._fav; handleFavQuestion(q, i)"
+                >{{ q._fav ? '⭐' : '☆' }}</el-button>
+              </div>
+              <el-button text type="primary" size="small" @click="q._show = !q._show">
+                {{ q._show ? '▲ 隐藏答案' : '▼ 查看答案' }}
+              </el-button>
+              <div v-if="q._show" class="q-detail-box">
+                <div v-if="q.answer"><strong>📝 答案：</strong>{{ q.answer }}</div>
+                <div v-if="q.answer_guide"><strong>💡 思路：</strong>{{ q.answer_guide }}</div>
+                <div v-if="q.answer_script"><strong>🎤 话术：</strong>{{ q.answer_script }}</div>
+              </div>
+            </div>
+            <el-button type="primary" @click="copyQuestions" style="margin-top:1rem">📋 复制全部题目</el-button>
+          </div>
+
+          <el-empty v-if="!store.hasQuestions && !store.isGenerating" description="输入目标岗位，配置参数后点击「生成面试题」" />
+        </el-tab-pane>
+      </el-tabs>
+    </main>
+  </div>
+</template>
+
+<script setup>
+import { ref, computed } from 'vue'
+import { ElMessage } from 'element-plus'
+import { useAuthStore } from '../stores/auth'
+import { useResumeStore } from '../stores/resume'
+import NavBar from '../components/layout/NavBar.vue'
+import { generatePracticeQuestions, savePracticeQuestions, toggleFavorite } from '../api/practice'
+
+const auth = useAuthStore()
+const store = useResumeStore()
+const activeTab = ref('optimize')
+const showAnalysis = ref(true)
+
+const styles = ['简洁专业', '突出业绩', '技术导向', '创新风格']
+const difficulties = ['入门', '基础', '中等', '面试高频', '深度深挖']
+const questionTypes = ['选择题', '简答题', '项目手撕题', '场景面试题', '压力面试题']
+
+const qDifficulty = ref('中等')
+const qTypes = ref(['简答题', '项目手撕题'])
+const qCount = ref(5)
+const savingQuestions = ref(false)
+
+// Extract diagnosis data for AI analysis tab
+const diagnosisData = computed(() => {
+  const ar = store.analysisResult
+  if (!ar || ar.defects) return null
+  return ar.diagnosis ? ar : null
+})
+
+const diagnosisHasContent = computed(() => {
+  return diagnosisData.value?.diagnosis || diagnosisData.value?.weaknesses?.length
+})
+
+const dimensionScores = computed(() => {
+  const diag = diagnosisData.value?.diagnosis
+  if (!diag) return []
+  const dimNameMap = {
+    completeness: '完整度', keyword_match: '关键词匹配',
+    quantification: '量化成果', structure: '结构逻辑', language: '语言表达',
+    competitiveness: '竞争力', accuracy: '准确性', depth: '深度',
+    expression: '表达力', highlights: '亮点',
+  }
+  const results = []
+  Object.entries(diag).forEach(([key, val]) => {
+    if (typeof val === 'object' && val !== null && 'score' in val) {
+      results.push({ key, label: dimNameMap[key] || key, value: val.score })
+    } else if (typeof val === 'number') {
+      results.push({ key, label: dimNameMap[key] || key, value: val })
+    }
+  })
+  return results
+})
+
+function scoreGrade(score) {
+  if (score >= 85) return 'grade-s'
+  if (score >= 70) return 'grade-a'
+  if (score >= 55) return 'grade-b'
+  if (score >= 40) return 'grade-c'
+  return 'grade-d'
+}
+
+function dimColor(score) {
+  if (score >= 80) return '#059669'
+  if (score >= 60) return '#eab308'
+  return '#ef4444'
+}
+
+async function handleFileUpload(file) {
+  try {
+    await store.upload(file.raw)
+    ElMessage.success(`已解析：${file.name}`)
+  } catch {
+    ElMessage.error('文件解析失败，请检查文件格式')
+  }
+}
+
+function loadDemo() {
+  store.resumeText = `张三 | 男 | 1997年 | 3年工作经验
+邮箱：zhangsan@example.com | 手机：13800138000
+期望职位：Python后端开发工程师
+
+教育经历：
+2015-2019 清华大学 计算机科学与技术 本科
+
+工作经历：
+2020-至今 某科技有限公司 | Python开发工程师
+- 负责公司核心业务系统后端开发，使用Django+MySQL架构
+- 优化数据库查询性能，将核心API响应时间从500ms降至80ms
+- 参与微服务架构改造，拆分单体应用为12个微服务
+- 编写自动化测试用例200+，测试覆盖率达85%
+
+项目经验：
+2022年 智能客服系统 | 核心开发者
+- 使用FastAPI+WebSocket实现实时消息推送
+- 集成NLP模型实现智能问答，准确率92%
+- 系统支撑日均10万+次对话请求`
+  store.targetPosition = 'Python后端开发工程师'
+  ElMessage.success('已加载示例简历')
+}
+
+async function handleOptimize() {
+  if (!store.targetPosition.trim()) {
+    ElMessage.error('请填写目标岗位')
+    return
+  }
+  await store.optimize()
+}
+
+async function handleGenQuestions() {
+  if (!store.targetPosition.trim()) {
+    ElMessage.error('请填写目标岗位')
+    return
+  }
+  store.isGenerating = true
+  try {
+    const { data } = await generatePracticeQuestions({
+      target_position: store.targetPosition.trim(),
+      difficulty: qDifficulty.value,
+      question_types: qTypes.value,
+      question_count: qCount.value,
+    })
+    store.questions = (data.questions || []).map(q => ({ ...q, _show: false, _fav: false }))
+  } catch {
+    ElMessage.error('生成失败，请检查 API 配置')
+  } finally {
+    store.isGenerating = false
+  }
+}
+
+async function handleSaveQuestions() {
+  savingQuestions.value = true
+  try {
+    await savePracticeQuestions({
+      position: store.targetPosition.trim(),
+      questions: store.questions,
+    })
+    ElMessage.success('已存入题库，可在「面试刷题」中查看')
+  } catch {
+    ElMessage.error('保存失败')
+  } finally {
+    savingQuestions.value = false
+  }
+}
+
+async function handleFavQuestion(q, idx) {
+  try {
+    // If we have an id (from DB), use it; otherwise just toggle local state
+    if (q.id) await toggleFavorite(q.id)
+  } catch { /* non-critical */ }
+}
+
+function copyText(text) {
+  navigator.clipboard.writeText(text).then(() => ElMessage.success('已复制到剪贴板'))
+}
+
+function exportPdf() {
+  const text = store.optimizedResult?.optimized_text
+  if (!text) return
+
+  // Extract name from first line (e.g. "张三 | 男 | 1997年 | 3年" or "张三")
+  const lines = text.split('\n').filter(l => l.trim())
+  let name = lines[0]?.split(/[|｜]/)[0]?.trim() || ''
+  // Remove trailing special chars
+  name = name.replace(/[：:，,。●◆\s]+$/, '').slice(0, 30)
+
+  // Extract contact info via regex
+  const fullText = text
+  const emailMatch = fullText.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/)
+  const phoneMatch = fullText.match(/(1[3-9]\d{9})/)
+  const email = emailMatch ? emailMatch[1] : ''
+  const phone = phoneMatch ? phoneMatch[1] : ''
+
+  // Escape HTML entities in resume text
+  const escHtml = (s) => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+  // Convert blank lines to paragraph breaks, preserve line structure
+  const bodyHtml = escHtml(text)
+    .split('\n')
+    .map(line => line.trim() || '<br>')
+    .join('\n')
+
+  const html = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="UTF-8"><title>${name || '简历'}</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif; font-size: 14px; line-height: 1.8; color: #222; max-width: 780px; margin: 0 auto; padding: 50px 55px; }
+  .header { text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2.5px solid #2c3e50; }
+  .header h1 { font-size: 28px; letter-spacing: 4px; margin-bottom: 10px; color: #2c3e50; font-weight: 700; }
+  .header .contact { font-size: 13px; color: #555; }
+  .header .contact span { margin: 0 12px; }
+  .resume-body { white-space: pre-wrap; font-size: 13.5px; }
+  @media print { body { padding: 35px 45px; } }
+</style></head>
+<body>
+  <div class="header">
+    <h1>${name || '简历'}</h1>
+    <div class="contact">
+      ${email ? '<span>📧 ' + email + '</span>' : ''}
+      ${phone ? '<span>📱 ' + phone + '</span>' : ''}
+    </div>
+  </div>
+  <div class="resume-body">${bodyHtml}</div>
+</body></html>`
+
+  const w = window.open('', '_blank', 'width=900,height=700')
+  w.document.write(html)
+  w.document.close()
+  setTimeout(() => w.print(), 500)
+}
+
+function copyQuestions() {
+  const text = store.questions.map((q, i) =>
+    `#${i + 1} ${q.question || q}\n  类型：${q.type || ''} | 难度：${q.difficulty || ''}\n  答案：${q.answer || ''}\n  思路：${q.answer_guide || ''}\n  话术：${q.answer_script || ''}`
+  ).join('\n\n')
+  copyText(text)
+}
+</script>
+
+<style scoped>
+.optimizer-page { min-height: 100vh; background: linear-gradient(180deg, #f0fdfa 0%, #ecfdf5 100%); }
+.main-content { padding: 80px 2rem 2rem; max-width: 1100px; margin: 0 auto; }
+.input-section { background: #fff; border-radius: 12px; padding: 1.5rem; border: 1px solid #ccfbf1; margin-bottom: 1rem; }
+.input-actions { display: flex; gap: 0.75rem; margin-top: 1rem; align-items: center; flex-wrap: wrap; }
+.upload-compact { width: auto; }
+.upload-compact :deep(.el-upload) { display: inline-block; }
+.upload-compact :deep(.el-upload-dragger) { padding: 0.5rem 1.25rem; width: auto; height: auto; }
+.upload-inline { display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; color: #555; white-space: nowrap; }
+.is-required :deep(.el-input__inner) { border-color: #f56c6c; }
+.step-row { display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin: 1rem 0 1.5rem; }
+.step-dot { font-size: 0.8rem; color: #bbb; }
+.step-dot.active { color: #0d9488; font-weight: 600; }
+.step-dot.done { color: #059669; }
+.step-line { width: 40px; height: 2px; background: #ccfbf1; }
+.tab-config { display: flex; gap: 0.75rem; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; padding: 1rem; background: #f8fafb; border-radius: 8px; }
+.result-card { background: #fff; border-radius: 12px; padding: 0; border: 1px solid #ccfbf1; margin-top: 1rem; overflow: hidden; }
+.analysis-section { }
+.analysis-header { display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.5rem; background: #f8fafb; cursor: pointer; font-weight: 600; color: #64748b; font-size: 0.95rem; user-select: none; }
+.analysis-header:hover { background: #f1f5f9; }
+.toggle-icon { font-size: 0.75rem; color: #999; }
+.highlight-box { padding: 1rem 1.5rem; }
+.highlight-box pre { white-space: pre-wrap; font-size: 0.88rem; line-height: 1.65; margin: 0; }
+.box-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem; }
+.comparison-box { background: #ecfdf5; border-top: 1px solid #d1fae5; }
+.comparison-box .box-header { color: #065f46; }
+.comparison-box pre { color: #064e3b; }
+.hr-box { background: #eff6ff; border-top: 1px solid #dbeafe; }
+.hr-box .box-header { color: #1e40af; }
+.hr-box pre { color: #1e3a5f; }
+.resume-output { padding: 1.5rem; }
+.resume-output-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; font-weight: 700; color: #0f766e; font-size: 1.05rem; }
+.resume-output-actions { display: flex; gap: 0.5rem; }
+.optimized-text { background: #fafcfc; border: 1px solid #d1fae5; border-radius: 8px; }
+.optimized-text pre { white-space: pre-wrap; padding: 1.25rem; font-size: 0.9rem; line-height: 1.7; color: #1a202c; margin: 0; min-height: 200px; }
+.section { margin: 1.5rem 0; }
+.section h4 { color: #0f766e; margin-bottom: 0.5rem; }
+.score-row { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
+.score-circle { width: 72px; height: 72px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; font-weight: 700; color: #fff; }
+.score-circle.grade-s { background: #059669; }
+.score-circle.grade-a { background: #0d9488; }
+.score-circle.grade-b { background: #eab308; }
+.score-circle.grade-c { background: #f97316; }
+.score-circle.grade-d { background: #ef4444; }
+.score-label { font-weight: 600; color: #0f766e; font-size: 1.1rem; }
+.dimension-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; }
+.dim-card { background: #f8fafb; border-radius: 8px; padding: 1rem; text-align: center; }
+.dim-name { font-size: 0.85rem; color: #555; margin-bottom: 0.5rem; font-weight: 600; }
+.dim-score { font-size: 0.8rem; color: #0d9488; margin-top: 0.3rem; font-weight: 600; }
+.keyword-row { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.kw-tag { padding: 2px 10px; border-radius: 20px; font-size: 0.8rem; }
+.kw-matched { background: #d1fae5; color: #065f46; }
+.kw-missing { background: #fee2e2; color: #991b1b; text-decoration: line-through; }
+.weak-item { padding: 0.5rem 0; border-bottom: 1px solid #f0f0f0; }
+.weak-item p { margin: 0.25rem 0; font-size: 0.9rem; color: #555; }
+.suggestion-text { color: #0d9488 !important; }
+.suggestion-list { padding-left: 1.2rem; }
+.suggestion-list li { margin: 0.3rem 0; color: #555; }
+.defect-list { margin-bottom: 1.5rem; }
+.defect-item { display: flex; gap: 0.5rem; align-items: center; padding: 0.3rem 0; }
+.question-list { margin-top: 1rem; }
+.question-card { background: #fff; border: 1px solid #ccfbf1; border-radius: 10px; padding: 1rem; margin-bottom: 0.75rem; }
+.q-header { font-weight: 600; color: #0f766e; margin-bottom: 0.5rem; display: flex; align-items: center; flex-wrap: wrap; gap: 0.3rem; }
+.q-number { background: #0d9488; color: #fff; border-radius: 4px; padding: 1px 6px; font-size: 0.8rem; flex-shrink: 0; }
+.q-answer, .q-tips { font-size: 0.9rem; color: #555; margin-top: 0.5rem; padding-left: 1.5rem; }
+</style>

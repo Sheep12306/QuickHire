@@ -1,11 +1,23 @@
 import streamlit as st
+from database import init_db
+from auth_service import AuthService
+
+# ── Database init ─────────────────────────────────────────────
+init_db()
+
+# ── Auth helper ───────────────────────────────────────────────
+def require_auth():
+    if not st.session_state.get("user_id"):
+        st.warning("请先登录以使用此功能")
+        st.page_link("pages/01_login.py", label="🔐 前往登录")
+        st.stop()
 
 # ── Page config ──────────────────────────────────────────────
 st.set_page_config(
     page_title="快克简历优化",
     page_icon="📝",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
 )
 
 # ── Design System CSS ────────────────────────────────────────
@@ -18,17 +30,13 @@ DESIGN_CSS = """
     footer {visibility: hidden;}
     .stDeployButton {display: none;}
 
-    html, body, .stMarkdown, .stText, .stButton button, .stTextInput input, .stTextArea textarea, .stSelectbox div, [data-testid="stSidebar"] * {
+    html, body, .stMarkdown, .stText, .stButton button, .stTextInput input, .stTextArea textarea, .stSelectbox div {
         font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
     }
-    /* Material Icons elements: restore icon font to prevent ligature text leakage */
-    [data-testid="stSidebarCollapseButton"],
-    [data-testid="stSidebarCollapseButton"] *,
-    button[data-testid="baseButton-header"],
-    button[data-testid="baseButton-header"] *,
-    .material-icons {
-        font-family: 'Material Icons' !important;
-    }
+
+    /* Hide sidebar completely on home page */
+    [data-testid="stSidebar"] { display: none !important; }
+    [data-testid="stSidebarCollapseButton"] { display: none !important; }
 
     :root {
         --teal-50:  #F0FDFA;
@@ -41,52 +49,100 @@ DESIGN_CSS = """
         --teal-700: #0F766E;
         --teal-800: #115E59;
         --teal-900: #134E4A;
-        --emerald-500: #10B981;
-        --emerald-600: #059669;
-        --emerald-700: #047857;
-        --cyan-500: #06B6D4;
-        --cyan-600: #0891B2;
-        --muted: #5B8A87;
-        --stone-50: #FAFAF9;
-        --stone-200: #E7E5E4;
-        --stone-400: #A8A29E;
-        --stone-500: #78716C;
-        --stone-900: #1C1917;
     }
 
-    /* ── Hide Streamlit auto-generated nav (using manual page_link instead) ── */
-    [data-testid="stSidebarNav"] { display: none !important; }
-
-    /* ── Sidebar: 青→绿自然过渡 ── */
-    [data-testid="stSidebar"] {
-        background: linear-gradient(175deg, #0A4C4E 0%, #0F766E 45%, #065F46 100%);
-        border-right: none;
-        box-shadow: 2px 0 24px rgba(10, 76, 78, 0.15);
-    }
-    [data-testid="stSidebar"] * {
-        color: #CCFBF1 !important;
-    }
-    [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {
-        color: #FFFFFF !important;
-    }
-    [data-testid="stSidebar"] hr {
-        border-color: rgba(204, 251, 241, 0.12) !important;
-    }
-    [data-testid="stSidebar"] button {
-        background: rgba(255,255,255,0.08) !important;
-        border: 1px solid rgba(255,255,255,0.12) !important;
-        color: #CCFBF1 !important;
-        border-radius: 8px !important;
-        transition: all 0.2s ease !important;
-    }
-    [data-testid="stSidebar"] button:hover {
-        background: rgba(255,255,255,0.16) !important;
-        border-color: rgba(255,255,255,0.25) !important;
-    }
-
-    /* ── Main area ── */
     .main [data-testid="stAppViewContainer"] {
         background: linear-gradient(180deg, #F0FDFA 0%, #ECFDF5 100%);
+    }
+
+    /* Hide Streamlit header/toolbar/deploy */
+    [data-testid="stHeader"] { display: none !important; }
+    [data-testid="stToolbar"] { display: none !important; }
+    [data-testid="stDecoration"] { display: none !important; }
+    .stDeployButton { display: none !important; }
+    [data-testid="baseButton-header"] { display: none !important; }
+
+    /* Push main content down to make room for fixed nav */
+    .main [data-testid="stAppViewContainer"] {
+        padding-top: 62px !important;
+    }
+    .main [data-testid="stAppViewBlockContainer"] {
+        padding-top: 0 !important;
+    }
+
+    /* ── Fixed Top Nav Bar ── */
+    .topnav {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 9999;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 2rem;
+        height: 56px;
+        background: rgba(240, 253, 250, 0.95);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border-bottom: 1px solid rgba(204, 251, 241, 0.6);
+        box-shadow: 0 1px 8px rgba(15, 118, 110, 0.06);
+    }
+    .topnav-brand {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #0F766E;
+    }
+    .topnav-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    .btn-login {
+        background: transparent;
+        border: 1.5px solid #0D9488;
+        color: #0D9488;
+        padding: 0.45rem 1.25rem;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-decoration: none;
+        display: inline-block;
+    }
+    .btn-login:hover {
+        background: #0D9488;
+        color: #FFFFFF;
+    }
+    .btn-register {
+        background: linear-gradient(135deg, #0D9488 0%, #059669 100%);
+        border: none;
+        color: #FFFFFF;
+        padding: 0.45rem 1.25rem;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-decoration: none;
+        display: inline-block;
+        box-shadow: 0 2px 8px rgba(13, 148, 136, 0.25);
+    }
+    .btn-register:hover {
+        box-shadow: 0 4px 16px rgba(13, 148, 136, 0.4);
+        transform: translateY(-1px);
+    }
+    .user-avatar {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-size: 0.85rem;
+        color: #0F766E;
+        font-weight: 600;
     }
 
     /* ── Typography ── */
@@ -97,6 +153,7 @@ DESIGN_CSS = """
         color: #0F766E;
         letter-spacing: -0.025em;
         margin-bottom: 0.75rem;
+        text-align: center;
     }
     .brand-subtitle {
         font-family: 'DM Sans', sans-serif;
@@ -104,6 +161,7 @@ DESIGN_CSS = """
         color: #0D9488;
         line-height: 1.7;
         margin-bottom: 2.5rem;
+        text-align: center;
     }
     .section-title {
         font-family: 'DM Sans', sans-serif;
@@ -133,10 +191,7 @@ DESIGN_CSS = """
         box-shadow: 0 4px 20px rgba(15, 118, 110, 0.08);
         transform: translateY(-2px);
     }
-    .feature-card .fc-icon {
-        font-size: 1.75rem;
-        margin-bottom: 0.75rem;
-    }
+    .feature-card .fc-icon { font-size: 1.75rem; margin-bottom: 0.75rem; }
     .feature-card .fc-title {
         font-family: 'DM Sans', sans-serif;
         font-weight: 600;
@@ -144,13 +199,9 @@ DESIGN_CSS = """
         color: #0F766E;
         margin-bottom: 0.35rem;
     }
-    .feature-card .fc-desc {
-        font-size: 0.82rem;
-        color: #64748B;
-        line-height: 1.5;
-    }
+    .feature-card .fc-desc { font-size: 0.82rem; color: #64748B; line-height: 1.5; }
 
-    /* ── CTA button override ── */
+    /* ── CTA buttons ── */
     .st-key-hero_cta button {
         background: linear-gradient(135deg, #0D9488 0%, #059669 100%) !important;
         border: none !important;
@@ -165,6 +216,64 @@ DESIGN_CSS = """
     .st-key-hero_cta button:hover {
         box-shadow: 0 6px 22px rgba(13, 148, 136, 0.4) !important;
         transform: translateY(-1px);
+    }
+    .st-key-hero_demo button {
+        background: #FFFFFF !important;
+        border: 2px solid #99F6E4 !important;
+        color: #0F766E !important;
+        font-size: 1.05rem !important;
+        font-weight: 600 !important;
+        padding: 0.7rem 2.5rem !important;
+        border-radius: 10px !important;
+        transition: all 0.2s ease !important;
+    }
+    .st-key-hero_demo button:hover {
+        border-color: #2DD4BF !important;
+        background: #F0FDFA !important;
+        transform: translateY(-1px);
+    }
+
+    /* ── Social proof ── */
+    .social-proof {
+        display: flex;
+        gap: 2rem;
+        justify-content: center;
+        margin: 2rem 0 1.5rem;
+    }
+    .social-stat { text-align: center; }
+    .social-stat .num {
+        font-family: 'DM Sans', sans-serif;
+        font-size: 1.6rem;
+        font-weight: 700;
+        color: #0F766E;
+    }
+    .social-stat .label { font-size: 0.78rem; color: #5B8A87; }
+
+    /* ── Step preview ── */
+    .step-preview {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        margin: 2rem 0;
+    }
+    .step-preview-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.85rem;
+        color: #5B8A87;
+    }
+    .step-preview-num {
+        width: 32px; height: 32px;
+        border-radius: 50%;
+        background: #F0FDFA;
+        border: 2px solid #CCFBF1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 0.85rem;
+        color: #0F766E;
     }
 
     /* ── Footer ── */
@@ -187,133 +296,31 @@ DESIGN_CSS = """
     @media (max-width: 768px) {
         .feature-grid { grid-template-columns: repeat(2, 1fr); }
         .brand-hero { font-size: 1.8rem; }
-    }
-
-    /* ── Social proof ── */
-    .social-proof {
-        display: flex;
-        gap: 2rem;
-        justify-content: center;
-        margin: 2rem 0 1.5rem;
-    }
-    .social-stat {
-        text-align: center;
-    }
-    .social-stat .num {
-        font-family: 'DM Sans', sans-serif;
-        font-size: 1.6rem;
-        font-weight: 700;
-        color: #0F766E;
-    }
-    .social-stat .label {
-        font-size: 0.78rem;
-        color: #5B8A87;
-    }
-
-    /* ── Demo button ── */
-    .st-key-hero_demo button {
-        background: #FFFFFF !important;
-        border: 2px solid #99F6E4 !important;
-        color: #0F766E !important;
-        font-size: 1.05rem !important;
-        font-weight: 600 !important;
-        padding: 0.7rem 2.5rem !important;
-        border-radius: 10px !important;
-        transition: all 0.2s ease !important;
-    }
-    .st-key-hero_demo button:hover {
-        border-color: #2DD4BF !important;
-        background: #F0FDFA !important;
-        transform: translateY(-1px);
-    }
-
-    /* ── Privacy badge (sidebar) ── */
-    .privacy-badge {
-        display: flex;
-        align-items: center;
-        gap: 0.4rem;
-        padding: 0.5rem 0.75rem;
-        background: rgba(255,255,255,0.08);
-        border: 1px solid rgba(255,255,255,0.1);
-        border-radius: 8px;
-        font-size: 0.7rem;
-        color: #99C7C3;
-        margin-top: 1rem;
-    }
-
-    /* ── Step preview mini ── */
-    .step-preview {
-        display: flex;
-        gap: 1rem;
-        justify-content: center;
-        margin: 2rem 0;
-    }
-    .step-preview-item {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        font-size: 0.85rem;
-        color: #5B8A87;
-    }
-    .step-preview-num {
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        background: #F0FDFA;
-        border: 2px solid #CCFBF1;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 700;
-        font-size: 0.85rem;
-        color: #0F766E;
+        .topnav { padding: 0.5rem 1rem; }
     }
 </style>
 """
 
 st.markdown(DESIGN_CSS, unsafe_allow_html=True)
 
-# ── Sidebar ──────────────────────────────────────────────────
-with st.sidebar:
-    st.markdown("""
-        <div style="padding:0.5rem 0 1.5rem 0;">
-            <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.25rem;">
-                <span style="font-size:1.5rem;">📝</span>
-                <span style="font-size:1.15rem;font-weight:700;color:#FFFFFF;">快克简历优化</span>
-            </div>
-            <div style="font-size:0.78rem;color:#5EEAD4;">AI 简历优化 & 面试题生成</div>
-        </div>
-    """, unsafe_allow_html=True)
+# ── Top Nav Bar ──────────────────────────────────────────────
+logged_in = AuthService.is_logged_in()
+display_name = st.session_state.get("display_name", "用户")
 
-    st.markdown("---")
-
-    st.page_link("app.py", label="🏠 首页")
-    st.page_link("pages/02_resume_optimizer.py", label="📝 简历优化中心")
-
-    st.markdown("---")
-
-    st.markdown("""
-        <div style="font-size:0.75rem;color:#99C7C3;line-height:1.6;">
-            <div style="font-weight:600;color:#99F6E4;margin-bottom:0.25rem;">核心功能</div>
-            · 简历智能润色<br>
-            · AI 深度分析<br>
-            · 个性化面试题库<br>
-        </div>
-    """, unsafe_allow_html=True)
-
-    # Privacy badge
-    st.markdown("""
-        <div class="privacy-badge">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5EEAD4" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-            上传内容仅用于分析，不保存或共享
-        </div>
-    """, unsafe_allow_html=True)
-
-    st.markdown("""
-        <div style="font-size:0.72rem;color:#7AADA9;margin-top:1.5rem;line-height:1.5;">
-            Powered by Streamlit<br>& 通义千问
-        </div>
-    """, unsafe_allow_html=True)
+st.markdown(f"""
+<div class="topnav">
+    <div class="topnav-brand">
+        <span style="font-size:1.5rem;">📝</span>
+        <span>快克简历优化</span>
+    </div>
+    <div class="topnav-actions">
+        {f'<div class="user-avatar">👤 {display_name}</div>'
+         if logged_in else
+         f'<a href="/pages/01_login" target="_self" class="btn-login">🔐 登录</a>'
+         f'<a href="/pages/01_login" target="_self" class="btn-register">📝 注册</a>'}
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
 # ── Main Content ─────────────────────────────────────────────
 st.markdown(
@@ -375,4 +382,4 @@ for icon, title, desc in features:
 st.markdown('</div>', unsafe_allow_html=True)
 
 # Footer
-st.markdown('<div class="footer-line">Powered by Streamlit & 通义千问</div>', unsafe_allow_html=True)
+st.markdown('<div class="footer-line">Powered by Streamlit & DeepSeek</div>', unsafe_allow_html=True)

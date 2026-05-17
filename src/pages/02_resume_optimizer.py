@@ -1,14 +1,22 @@
 import streamlit as st
 import json
 import os
+import sys
 
-os.chdir(os.path.dirname(os.path.dirname(__file__)))
+_parent = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+os.chdir(_parent)
+if _parent not in sys.path:
+    sys.path.insert(0, _parent)
 
-from api_client import call_qwen_api_with_retry
+from api_config import is_api_configured
+from api_client import call_qwen_api_with_retry, safe_json_parse
 from prompt_builder import build_optimize_prompt, build_interview_question_prompt, build_resume_diagnosis_prompt
 from file_parser import parse_uploaded_file, get_supported_formats
 from resume_parser import parse_resume_text, resume_to_summary
 from defect_detector import ResumeDefectDetector
+from data_service import ResumeService, InterviewService, UserSettingsService
+from export_utils import generate_pdf_resume
+from components.shared_sidebar import render_shared_sidebar
 
 st.set_page_config(
     page_title="简历优化中心 - 快克简历优化",
@@ -49,11 +57,16 @@ STYLE_CSS = """
     /* ── Hide Streamlit auto-generated nav (using manual page_link instead) ── */
     [data-testid="stSidebarNav"] { display: none !important; }
 
-    /* Sidebar — deep teal gradient, 青→绿过渡 */
+    /* Sidebar — slide-in animation */
     [data-testid="stSidebar"] {
         background: linear-gradient(175deg, #0A4C4E 0%, #0F766E 45%, #065F46 100%);
         border-right: none;
         box-shadow: 2px 0 24px rgba(10, 76, 78, 0.15);
+        animation: sidebarSlideIn 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+    }
+    @keyframes sidebarSlideIn {
+        from { transform: translateX(-60px); opacity: 0.6; }
+        to   { transform: translateX(0);    opacity: 1; }
     }
     [data-testid="stSidebar"] * { color: #CCFBF1 !important; }
     [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 { color: #FFFFFF !important; }
@@ -353,26 +366,16 @@ STYLE_CSS = """
 
 st.markdown(STYLE_CSS, unsafe_allow_html=True)
 
+if not is_api_configured():
+    st.warning("⚠️ 通义千问 API 未配置，AI 功能不可用。请前往「个人中心 → API配置」设置你的 DashScope API Key。")
+    st.page_link("pages/05_profile.py", label="⚙️ 前往配置 API")
+
 # ── Sidebar ──────────────────────────────────────────────────
 with st.sidebar:
-    st.markdown("""
-        <div style="padding:0.5rem 0 1.5rem 0;">
-            <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.25rem;">
-                <span style="font-size:1.5rem;">📝</span>
-                <span style="font-size:1.15rem;font-weight:700;color:#FFFFFF;">快克简历优化</span>
-            </div>
-            <div style="font-size:0.78rem;color:#5EEAD4;">AI 简历优化 & 面试题生成</div>
-        </div>
-    """, unsafe_allow_html=True)
+    render_shared_sidebar(current_page="optimizer")
 
     st.markdown("---")
 
-    st.page_link("app.py", label="🏠 首页")
-    st.page_link("pages/02_resume_optimizer.py", label="📝 简历优化中心")
-
-    st.markdown("---")
-
-    # Decide active step based on session state
     has_resume = bool(st.session_state.get("resume_text", "").strip())
     has_optimized = bool(st.session_state.get("optimized_resume"))
     has_iq = bool(st.session_state.get("interview_questions"))
@@ -401,11 +404,34 @@ with st.sidebar:
         </div>
     """, unsafe_allow_html=True)
 
+    # Resume version history in sidebar
+    if st.session_state.get("user_id"):
+        history = ResumeService.get_resume_history(st.session_state.user_id)
+        if history:
+            st.markdown("---")
+            with st.expander("📂 历史简历版本"):
+                for h in history[:10]:
+                    pos = h.get("target_position", "未指定") or "未指定"
+                    date = (h.get("created_at") or "")[:10]
+                    st.markdown(
+                        f"<div style='font-size:0.72rem;color:#CCFBF1;margin-bottom:0.2rem;'>"
+                        f"v{h['version_number']} · {pos} · {date}</div>",
+                        unsafe_allow_html=True,
+                    )
+                    if st.button(f"📥 v{h['version_number']}", key=f"load_v{h['id']}"):
+                        if h.get("original_content"):
+                            st.session_state.resume_text = h["original_content"]
+                        if h.get("optimized_content"):
+                            st.session_state.optimized_resume = h["optimized_content"]
+                        if h.get("target_position"):
+                            st.session_state.target_position = h["target_position"]
+                        st.rerun()
+
     # Privacy badge
     st.markdown("""
         <div class="privacy-badge">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5EEAD4" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-            上传内容仅用于本次分析，不保存或共享
+            上传内容仅限你个人使用，加密存储
         </div>
     """, unsafe_allow_html=True)
 
@@ -417,6 +443,29 @@ with st.sidebar:
 
 # ── Header ───────────────────────────────────────────────────
 st.markdown('<div class="page-title">简历优化中心</div>', unsafe_allow_html=True)
+
+# Guest mode banner
+if not st.session_state.get("user_id"):
+    st.markdown("""
+        <div style="background:linear-gradient(135deg,#F0FDFA,#FFFFFF);border:1px solid #CCFBF1;
+                    border-radius:10px;padding:0.75rem 1.25rem;margin-bottom:1rem;
+                    display:flex;align-items:center;gap:0.75rem;font-size:0.82rem;color:#0F766E;">
+            <span style="font-size:1.2rem;">💡</span>
+            <span>当前为<b>游客模式</b>，简历不会保存。<a href="/pages/01_login" target="_self" style="color:#0D9488;font-weight:600;">登录/注册</a>后可自动保存历史版本、解锁面试教练与数据看板。</span>
+        </div>
+    """, unsafe_allow_html=True)
+
+# Auto-load user's current resume if none loaded
+user_id = st.session_state.get("user_id")
+if user_id and not st.session_state.get("resume_text") and not st.session_state.get("loaded_initial"):
+    latest = ResumeService.get_latest_resume(user_id)
+    if latest and latest.get("original_content"):
+        st.session_state.resume_text = latest["original_content"]
+        st.session_state.target_position = latest.get("target_position", "")
+        if latest.get("optimized_content"):
+            st.session_state.optimized_resume = latest["optimized_content"]
+        st.session_state.loaded_initial = True
+        st.rerun()
 
 # ====================================================================
 #  SHARED INPUT
@@ -598,18 +647,22 @@ with t1:
                 with st.expander("查看诊断摘要与改进要点"):
                     st.markdown(f'<div class="diff-panel">{diag_part.replace(chr(10), "<br>")}</div>', unsafe_allow_html=True)
 
+            optimized_text = resume_part if resume_part else opt_resume
+
             cc1, cc2 = st.columns(2)
             with cc1:
-                if st.button("复制优化结果", use_container_width=True, key="btn_copy_opt"):
-                    st.code(resume_part if resume_part else opt_resume)
-                    st.success("内容已显示在上方，可直接选中复制")
+                if st.button("📋 一键复制", use_container_width=True, key="btn_copy_opt"):
+                    st.code(optimized_text, language=None)
+                    st.success("选中上方文本即可复制 (Ctrl+C)")
             with cc2:
+                pdf_data = generate_pdf_resume(opt_resume)
                 st.download_button(
-                    "下载简历",
-                    data=resume_part if resume_part else opt_resume,
-                    file_name="optimized_resume.txt",
+                    "📄 导出 PDF 简历",
+                    data=pdf_data,
+                    file_name="optimized_resume.pdf",
+                    mime="application/pdf",
                     use_container_width=True,
-                    key="btn_dl_opt",
+                    key="btn_dl_pdf",
                 )
         else:
             st.markdown(
@@ -634,6 +687,15 @@ with t1:
                     prompt = build_optimize_prompt(resume_text, target_position, opt_style)
                     result = call_qwen_api_with_retry(prompt)
                     st.session_state.optimized_resume = result
+                    user_id = st.session_state.get("user_id")
+                    if user_id:
+                        ResumeService.save_resume(
+                            user_id=user_id,
+                            original_content=resume_text,
+                            target_position=target_position,
+                            optimized_content=result,
+                            optimization_style=opt_style,
+                        )
                     st.rerun()
                 except Exception as e:
                     st.error(f"优化失败: {e}")
@@ -813,7 +875,7 @@ with t2:
                 try:
                     prompt = build_resume_diagnosis_prompt(resume_text, target_position)
                     api_result = call_qwen_api_with_retry(prompt)
-                    diag_data = json.loads(api_result)
+                    diag_data = safe_json_parse(api_result)
                     d = diag_data.get("diagnosis", {})
                     st.session_state.ai_analysis_result = {
                         "overall_score": diag_data.get("overall_score", 0),
@@ -828,6 +890,12 @@ with t2:
                         ],
                         "diagnosis_raw": diag_data,
                     }
+                    user_id = st.session_state.get("user_id")
+                    if user_id:
+                        ResumeService.update_analysis(
+                            user_id=user_id,
+                            analysis_result=json.dumps(diag_data, ensure_ascii=False),
+                        )
                     st.rerun()
                 except Exception as e:
                     st.error(f"AI 分析失败: {e}")
@@ -859,38 +927,73 @@ with t3:
 
         iq = st.session_state.get("interview_questions")
         if iq:
+            # Load favorites from user preferences
+            user_id = st.session_state.get("user_id")
+            favorites = []
+            if user_id:
+                prefs = UserSettingsService.get_preferences(user_id)
+                favorites = prefs.get("favorite_questions", [])
+
             questions = iq.get("questions", [])
             for idx, q in enumerate(questions, 1):
                 qt = q.get("type", "")
                 qd = q.get("difficulty", "")
-                with st.expander(f"第{idx}题  [{qd}] {qt}"):
-                    st.markdown(f"**题目：** {q.get('question', '无')}")
-                    st.markdown("**答案：**")
-                    st.info(q.get("answer", "无"))
-                    if q.get("answer_guide"):
-                        st.markdown("**答题思路：**")
-                        st.write(q.get("answer_guide"))
-                    if q.get("answer_script"):
-                        st.markdown("**高分回答：**")
-                        st.success(q.get("answer_script"))
+                q_text = q.get("question", "")
+                q_key = q_text[:80]  # unique key for this question
 
-            dl1, dl2 = st.columns(2)
-            with dl1:
-                st.download_button(
-                    "导出 JSON",
-                    data=json.dumps(questions, ensure_ascii=False, indent=2),
-                    file_name="interview_questions.json",
-                    use_container_width=True,
-                    key="btn_dl_json",
-                )
-            with dl2:
-                st.download_button(
-                    "导出完整题库",
-                    data=json.dumps(iq, ensure_ascii=False, indent=2),
-                    file_name="interview_bank.json",
-                    use_container_width=True,
-                    key="btn_dl_full",
-                )
+                is_fav = q_key in favorites
+
+                with st.expander(f"{'⭐ ' if is_fav else ''}第{idx}题  [{qd}] {qt}  — {q_text[:50]}..."):
+                    st.markdown(f"**📝 题目：** {q_text}")
+
+                    # Answer guide FIRST (prominent)
+                    if q.get("answer_guide"):
+                        st.markdown("**💡 答题思路：**")
+                        st.info(q.get("answer_guide"))
+
+                    # Answer collapsed by default
+                    answer_text = q.get("answer", "")
+                    if answer_text:
+                        with st.expander("📖 点击查看答案", expanded=False):
+                            st.markdown(answer_text)
+
+                    # High-score script
+                    if q.get("answer_script"):
+                        with st.expander("🏆 高分回答话术", expanded=False):
+                            st.success(q.get("answer_script"))
+
+                    # Favorite & Copy buttons
+                    fc1, fc2 = st.columns([1, 3])
+                    with fc1:
+                        if is_fav:
+                            if st.button("⭐ 已收藏", key=f"unfav_{idx}", use_container_width=True):
+                                favorites = [f for f in favorites if f != q_key]
+                                if user_id:
+                                    UserSettingsService.save_preferences(user_id, {"favorite_questions": favorites})
+                                st.rerun()
+                        else:
+                            if st.button("☆ 收藏", key=f"fav_{idx}", use_container_width=True):
+                                favorites.append(q_key)
+                                if user_id:
+                                    UserSettingsService.save_preferences(user_id, {"favorite_questions": favorites})
+                                st.rerun()
+                    with fc2:
+                        if st.button("📋 复制此题", key=f"copy_q_{idx}", use_container_width=True):
+                            copy_text = f"【题目】{q_text}\n\n【答题思路】{q.get('answer_guide', '')}\n\n【答案】{answer_text}\n\n【高分回答】{q.get('answer_script', '')}"
+                            st.code(copy_text, language=None)
+                            st.success("选中上方文本即可复制")
+
+            # Copy all questions button
+            st.markdown("---")
+            if st.button("📋 一键复制全部题库", use_container_width=True, key="copy_all"):
+                all_text = ""
+                for idx, q in enumerate(questions, 1):
+                    all_text += f"第{idx}题 [{q.get('difficulty','')}] {q.get('type','')}\n"
+                    all_text += f"Q: {q.get('question','')}\n"
+                    all_text += f"思路: {q.get('answer_guide','')}\n"
+                    all_text += f"A: {q.get('answer','')}\n\n"
+                st.code(all_text, language=None)
+                st.success("选中上方文本即可复制全部题库")
         else:
             st.markdown(
                 '<div class="empty-state">'
@@ -932,7 +1035,19 @@ with t3:
                         question_count=q_count,
                     )
                     result = call_qwen_api_with_retry(prompt)
-                    st.session_state.interview_questions = json.loads(result)
+                    st.session_state.interview_questions = safe_json_parse(result)
+                    user_id = st.session_state.get("user_id")
+                    if user_id:
+                        latest = ResumeService.get_latest_resume(user_id)
+                        InterviewService.save_question_bank(
+                            user_id=user_id,
+                            questions_json=result,
+                            resume_version_id=latest["id"] if latest else None,
+                            difficulty=difficulty,
+                            question_types=",".join(q_types),
+                            scope=scope,
+                            question_count=q_count,
+                        )
                     st.rerun()
                 except Exception as e:
                     st.error(f"生成失败: {e}")

@@ -104,26 +104,27 @@ def build_optimize_prompt(
 - 目标岗位：{target_position if target_position else '未指定（根据简历内容推断最匹配的岗位方向）'}
 - 优化风格：{style_instruction}
 
-## 输出格式
-请按以下结构输出优化结果：
+## 输出格式要求（重要）
+请按以下结构输出，**优化后简历必须使用纯文本格式，不得使用任何 Markdown 语法**（不要用 **、##、- 等符号）：
 
 【简历诊断】
-- 当前问题：[列出3-5个具体问题]
-- 缺少的关键词：[列出目标岗位需要但简历中缺失的关键词]
+当前问题：[列出3-5个具体问题]
+缺少的关键词：[列出目标岗位需要但简历中缺失的关键词]
 
 【优化后简历】
-[输出完整优化后的简历，保持原有结构但内容全部重写]
+[输出完整优化后的纯文本简历，直接用空格和换行排版，禁止使用任何 Markdown 标记。个人信息、教育经历、工作经历、项目经验、技能特长各部分之间用空行分隔，各部分标题直接用中文括号或冒号标注]
 
 【优化对比】
-- 主要改进：[列举3-5项核心改进点]
-- 数据增强：[说明新增/强化的量化数据]
+主要改进：[列举3-5项核心改进点]
+数据增强：[说明新增/强化的量化数据]
 
 【HR视角点评】
-- 竞争力评估：[该简历在目标岗位的竞争力评价]
-- 投递建议：[适合投递的公司类型/岗位级别]
-- 面试准备：[针对该简历，面试官可能会深挖的3个问题]
+竞争力评估：[该简历在目标岗位的竞争力评价]
+投递建议：[适合投递的公司类型/岗位级别]
+面试准备：[针对该简历，面试官可能会深挖的3个问题]
 
 优化后简历字数控制在{word_limit}字以内。
+严格禁止在优化后简历部分使用 ** 加粗、## 标题、- 列表等 Markdown 格式。
 """
     return prompt
 
@@ -322,5 +323,250 @@ def build_weakness_analysis_prompt(resume_text: str, target_position: str = "") 
     "matching_analysis": "与目标岗位的匹配度分析",
     "top_priority_fix": "最需要优先修改的一项"
 }}
+"""
+    return prompt
+
+
+def build_interview_coach_prompt(
+    resume_summary: str,
+    technical_stack: list,
+    weak_areas: list,
+    interview_type: str,
+    difficulty: str,
+    question_count: int = 5,
+) -> str:
+    type_instruction = {
+        "技术面": "只出技术面试题，深挖技术原理、架构设计、算法等",
+        "HR面": "只出HR行为面试题，考察职业素养、团队协作等",
+        "综合面": "混合技术题和HR行为题，比例约6:4",
+    }
+    weak_instruction = ""
+    if weak_areas:
+        weak_instruction = "\n## 重点考察弱项\n候选人以下方面较薄弱，请针对这些领域出题：\n" + "\n".join(
+            f"- {w}" for w in weak_areas
+        )
+
+    prompt = f"""你是一位资深技术面试官，正在进行一场模拟面试。根据候选人简历量身出题。
+
+## 候选人背景
+{resume_summary}
+
+技术栈：{", ".join(technical_stack) if technical_stack else "未识别"}
+
+## 面试配置
+- 面试类型：{interview_type}
+- 难度：{difficulty}
+- 题目数量：{question_count}道
+{weak_instruction}
+
+## 面试官角色
+请模拟一位经验丰富的面试官，提问风格：
+- 技术面：大厂高级工程师，追问底层原理和最佳实践
+- HR面：资深HRBP，关注职业规划和软技能
+- 综合面：技术总监，兼顾技术深度和综合素质
+
+## 输出格式
+以JSON格式输出：
+{{
+    "interview_session": {{
+        "type": "{interview_type}",
+        "difficulty": "{difficulty}",
+        "total_questions": {question_count}
+    }},
+    "questions": [
+        {{
+            "question_number": 1,
+            "type": "技术/HR/场景/压力",
+            "question": "面试官提问内容",
+            "expected_answer_points": ["关键点1", "关键点2", "关键点3"],
+            "follow_up_question": "如果候选人回答不完整，追问的问题",
+            "difficulty": "难度级别"
+        }}
+    ]
+}}
+
+请确保JSON格式正确。
+"""
+    return prompt
+
+
+def build_answer_scoring_prompt(
+    question_text: str,
+    expected_answer_points: str,
+    user_answer: str,
+    question_type: str,
+) -> str:
+    prompt = f"""你是一位资深面试官，请对候选人的回答进行评分和反馈。
+
+## 面试题目
+{question_text}
+
+## 期望答案要点
+{expected_answer_points}
+
+## 候选人实际回答
+{user_answer}
+
+## 题目类型
+{question_type}
+
+## 评分维度（每项0-100分）
+1. **准确性**：回答是否切中问题核心，关键知识点是否正确
+2. **深度**：是否展现深层理解和独立思考，而非表面回答
+3. **结构**：逻辑是否清晰，STAR法则运用，层次分明
+4. **表达**：语言是否简洁专业，自信且有条理
+5. **亮点**：是否有量化成果、独特见解、或超出预期的内容
+
+## 输出格式（纯JSON）
+{{
+    "overall_score": 85,
+    "dimensions": {{
+        "accuracy": {{"score": 90, "comment": "核心概念回答正确，抓住了问题重点"}},
+        "depth": {{"score": 75, "comment": "能回答基本原理但缺乏深入思考和实战经验"}},
+        "structure": {{"score": 80, "comment": "逻辑清晰但可以更好地组织"}},
+        "expression": {{"score": 85, "comment": "表达专业简洁"}},
+        "highlights": {{"score": 70, "comment": "缺少量化数据和具体成果"}}
+    }},
+    "strengths": ["优点1", "优点2"],
+    "weaknesses": ["不足1", "不足2"],
+    "improved_answer": "一个更好的回答示例（模拟优秀候选人的完整回答）",
+    "key_missing_points": ["遗漏的关键点1", "遗漏的关键点2"],
+    "encouragement": "对候选人的一句鼓励和具体建议"
+}}
+
+输出必须是纯JSON。
+"""
+    return prompt
+
+
+def build_weakness_reinforcement_prompt(
+    weak_areas: list,
+    low_score_dimensions: list,
+    resume_summary: str,
+    question_count: int = 3,
+) -> str:
+    dim_str = ", ".join(low_score_dimensions) if low_score_dimensions else "综合"
+    areas_str = "\n".join(f"- {a}" for a in weak_areas) if weak_areas else "根据答题记录中的薄弱维度"
+
+    prompt = f"""你是一位资深面试教练，需要为候选人设计针对性强化训练题。
+
+## 候选人背景
+{resume_summary}
+
+## 薄弱领域
+{areas_str}
+
+## 评分较低的维度
+{dim_str}
+
+## 训练目标
+生成{question_count}道针对性强化题，帮助候选人弥补短板。
+
+## 输出格式（纯JSON）
+{{
+    "training_focus": "本次强化训练的核心目标",
+    "questions": [
+        {{
+            "question": "强化题内容",
+            "type": "题目类型",
+            "target_weakness": "针对的薄弱点",
+            "answer_guide": "答题思路指引",
+            "key_concepts": ["需要掌握的关键概念1", "概念2"]
+        }}
+    ],
+    "study_tips": ["学习建议1", "学习建议2"]
+}}
+
+输出必须是纯JSON。
+"""
+    return prompt
+
+
+def build_interview_summary_prompt(session_data: list) -> str:
+    qa_text = ""
+    total_score = 0
+    count = 0
+    for item in session_data:
+        score = item.get("score", 0)
+        total_score += score
+        count += 1
+        qa_text += f"""
+Q{item.get('number', '?')}: {item.get('question', '')}
+A: {item.get('answer', '')}
+Score: {score}
+===="""
+
+    avg = round(total_score / count, 1) if count > 0 else 0
+
+    prompt = f"""你是一位资深面试教练，请根据以下模拟面试记录生成总结报告。
+
+## 面试记录
+{qa_text}
+
+## 平均分：{avg}
+
+## 输出格式（纯JSON）
+{{
+    "overall_assessment": {{
+        "average_score": {avg},
+        "grade": "S/A/B/C/D (根据分数)",
+        "summary": "整体表现评价（100字以内）"
+    }},
+    "top_3_strengths": ["最强项1", "最强项2", "最强项3"],
+    "top_3_improvements": ["最需改进1", "最需改进2", "最需改进3"],
+    "dimension_analysis": {{
+        "accuracy": "准确性评价",
+        "depth": "深度评价",
+        "structure": "结构评价",
+        "expression": "表达评价",
+        "highlights": "亮点评价"
+    }},
+    "study_plan": [
+        "接下来1周应该重点练习的内容",
+        "建议阅读/学习的资源方向",
+        "下次模拟面试前的准备清单"
+    ],
+    "next_interview_tip": "下次面试最关键的1条建议"
+}}
+
+输出必须是纯JSON。
+"""
+    return prompt
+
+
+def build_monthly_report_prompt(
+    user_name: str,
+    resume_progress: str,
+    interview_stats: str,
+    weak_area_progress: str,
+    application_funnel: str,
+) -> str:
+    prompt = f"""你是一位专业的职业发展顾问，请为以下用户生成本月求职进展综合报告。
+
+## 用户姓名
+{user_name}
+
+## 简历优化历程
+{resume_progress}
+
+## 面试练习统计
+{interview_stats}
+
+## 薄弱环节进展
+{weak_area_progress}
+
+## 求职投递进度
+{application_funnel}
+
+## 报告要求
+请生成一份温暖而专业的月度报告，包含：
+1. 本月概览（简要总结各方面进展）
+2. 简历优化成果（评分变化、关键词匹配提升等）
+3. 面试能力分析（分数趋势、强项弱项）
+4. 薄弱环节进展（哪些在进步，哪些还需加强）
+5. 求职进度总结（投递数、面试转化率等）
+6. 下月建议（具体可行的行动建议）
+
+语言风格：温暖鼓励 + 数据驱动 + 具体可操作。
 """
     return prompt
