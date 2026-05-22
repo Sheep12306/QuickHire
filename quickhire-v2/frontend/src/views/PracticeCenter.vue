@@ -2,12 +2,21 @@
   <div class="practice-page">
     <NavBar />
     <main class="main-content">
-      <h1 class="page-title">📚 面试刷题中心</h1>
+      <h1 class="page-title">
+        <el-icon style="margin-right:8px"><Notebook /></el-icon>
+        面试刷题中心
+      </h1>
 
-      <el-tabs v-model="activeTab" type="border-card">
-        <!-- Tab 1: AI Generate by Position -->
-        <el-tab-pane label="🤖 AI 出题" name="generate">
-          <div class="gen-card">
+      <el-tabs v-model="activeTab" type="border-card" class="main-tabs">
+        <!-- Tab 1: AI Generate -->
+        <el-tab-pane name="generate">
+          <template #label>
+            <span class="tab-label">
+              <el-icon><MagicStick /></el-icon> AI 出题
+            </span>
+          </template>
+
+          <div class="gen-card card">
             <el-form inline>
               <el-form-item label="目标岗位" required>
                 <el-input v-model="genPosition" placeholder="如：Python后端开发" style="width:240px" />
@@ -27,7 +36,8 @@
               </el-form-item>
               <el-form-item>
                 <el-button type="primary" @click="handleGenerate" :loading="generating">
-                  🤖 AI 生成
+                  <el-icon style="margin-right:4px"><MagicStick /></el-icon>
+                  AI 生成
                 </el-button>
               </el-form-item>
             </el-form>
@@ -36,30 +46,24 @@
           <div v-if="generatedQuestions.length" class="q-section">
             <div class="section-head">
               <span>已生成 {{ generatedQuestions.length }} 道「{{ genPosition }}」面试题</span>
-              <el-button type="success" @click="handleSaveAll" :loading="saving">💾 全部存入题库</el-button>
-            </div>
-            <div v-for="(q, i) in generatedQuestions" :key="'g'+i" class="q-card">
-              <div class="q-top">
-                <span class="q-idx">#{{ i + 1 }}</span>
-                <el-tag v-if="q.type" size="small" effect="plain">{{ q.type }}</el-tag>
-                <el-tag v-if="q.difficulty" size="small" effect="plain" style="margin-left:4px">{{ q.difficulty }}</el-tag>
-                <span class="q-text">{{ q.question }}</span>
-              </div>
-              <el-button text type="primary" size="small" @click="q._show = !q._show">
-                {{ q._show ? '▲ 隐藏答案' : '▼ 查看答案' }}
+              <el-button type="success" @click="handleSaveAll" :loading="saving">
+                <el-icon style="margin-right:4px"><FolderAdd /></el-icon>
+                全部存入题库
               </el-button>
-              <div v-if="q._show" class="q-detail">
-                <div v-if="q.answer"><strong>📝 答案：</strong>{{ q.answer }}</div>
-                <div v-if="q.answer_guide"><strong>💡 思路：</strong>{{ q.answer_guide }}</div>
-                <div v-if="q.answer_script"><strong>🎤 话术：</strong>{{ q.answer_script }}</div>
-              </div>
             </div>
+            <q-card v-for="(q, i) in generatedQuestions" :key="'g'+i" :q="q" :idx="i+1" />
           </div>
         </el-tab-pane>
 
-        <!-- Tab 2: Browse Question Bank -->
-        <el-tab-pane label="📋 题库浏览" name="browse">
-          <div class="filter-bar">
+        <!-- Tab 2: Browse -->
+        <el-tab-pane name="browse">
+          <template #label>
+            <span class="tab-label">
+              <el-icon><Collection /></el-icon> 题库浏览
+            </span>
+          </template>
+
+          <div class="filter-bar card">
             <el-input v-model="filterPosition" placeholder="搜索岗位" style="width:200px" clearable @clear="loadBrowse" @keyup.enter="loadBrowse" />
             <el-select v-model="filterDifficulty" placeholder="难度" clearable style="width:120px" @change="loadBrowse">
               <el-option v-for="d in difficulties" :key="d" :label="d" :value="d" />
@@ -72,31 +76,8 @@
 
           <div v-if="browseList.length" class="q-section">
             <div class="section-head">共 {{ browseTotal }} 道题目</div>
-            <div v-for="(q, i) in browseList" :key="q.id" class="q-card">
-              <div class="q-top">
-                <span class="q-idx">#{{ (browsePage - 1) * 20 + i + 1 }}</span>
-                <el-tag v-if="q.type" size="small" effect="plain">{{ q.type }}</el-tag>
-                <el-tag v-if="q.difficulty" size="small" effect="plain" style="margin-left:4px">{{ q.difficulty }}</el-tag>
-                <el-tag v-if="q.position" size="small" effect="plain" type="info" style="margin-left:4px">{{ q.position }}</el-tag>
-                <span class="q-text">{{ q.question }}</span>
-                <el-button
-                  :type="q.favorited ? 'warning' : 'default'"
-                  size="small" circle
-                  @click="handleFavorite(q)"
-                  style="flex-shrink:0"
-                >{{ q.favorited ? '⭐' : '☆' }}</el-button>
-              </div>
-              <el-button text type="primary" size="small" @click="q._show = !q._show">
-                {{ q._show ? '▲ 隐藏答案' : '▼ 查看答案' }}
-              </el-button>
-              <div v-if="q._show" class="q-detail">
-                <div v-if="q.answer"><strong>📝 答案：</strong>{{ q.answer }}</div>
-                <div v-if="q.answer_guide"><strong>💡 思路：</strong>{{ q.answer_guide }}</div>
-                <div v-if="q.tags?.length" style="margin-top:0.4rem">
-                  <el-tag v-for="t in q.tags" :key="t" size="small" round style="margin-right:4px">{{ t }}</el-tag>
-                </div>
-              </div>
-            </div>
+            <q-card v-for="(q, i) in browseList" :key="q.id" :q="q" :idx="(browsePage-1)*20 + i + 1" :show-fav="true" @fav="handleFavorite(q)" />
+
             <el-pagination
               v-if="browseTotal > 20"
               :current-page="browsePage" :page-size="20" :total="browseTotal"
@@ -107,26 +88,17 @@
           <el-empty v-else description="题库中暂无题目，先生成并保存一些吧" />
         </el-tab-pane>
 
-        <!-- Tab 3: My Favorites -->
-        <el-tab-pane label="⭐ 我的收藏" name="favorites" v-if="auth.isLoggedIn">
+        <!-- Tab 3: Favorites -->
+        <el-tab-pane name="favorites" v-if="auth.isLoggedIn">
+          <template #label>
+            <span class="tab-label">
+              <el-icon><StarFilled /></el-icon> 我的收藏
+            </span>
+          </template>
+
           <div v-if="favList.length" class="q-section">
             <div class="section-head">已收藏 {{ favList.length }} 道题目</div>
-            <div v-for="(q, i) in favList" :key="'f'+q.id" class="q-card">
-              <div class="q-top">
-                <span class="q-idx">#{{ i + 1 }}</span>
-                <el-tag v-if="q.type" size="small" effect="plain">{{ q.type }}</el-tag>
-                <el-tag v-if="q.difficulty" size="small" effect="plain" style="margin-left:4px">{{ q.difficulty }}</el-tag>
-                <span class="q-text">{{ q.question }}</span>
-                <el-button type="warning" size="small" circle @click="handleFavorite(q)" style="flex-shrink:0">⭐</el-button>
-              </div>
-              <el-button text type="primary" size="small" @click="q._show = !q._show">
-                {{ q._show ? '▲ 隐藏答案' : '▼ 查看答案' }}
-              </el-button>
-              <div v-if="q._show" class="q-detail">
-                <div v-if="q.answer"><strong>📝 答案：</strong>{{ q.answer }}</div>
-                <div v-if="q.answer_guide"><strong>💡 思路：</strong>{{ q.answer_guide }}</div>
-              </div>
-            </div>
+            <q-card v-for="(q, i) in favList" :key="'f'+q.id" :q="q" :idx="i+1" :show-fav="true" :is-fav="true" @fav="handleFavorite(q)" />
           </div>
           <el-empty v-else description="还没有收藏任何题目" />
         </el-tab-pane>
@@ -134,6 +106,48 @@
     </main>
   </div>
 </template>
+
+<script>
+export default {
+  components: {
+    QCard: {
+      props: ['q', 'idx', 'showFav', 'isFav'],
+      emits: ['fav'],
+      template: `
+        <div class="q-card card">
+          <div class="q-top">
+            <span class="q-idx">#{{ idx }}</span>
+            <el-tag v-if="q.type" size="small" effect="plain">{{ q.type }}</el-tag>
+            <el-tag v-if="q.difficulty" size="small" effect="plain" style="margin-left:4px">{{ q.difficulty }}</el-tag>
+            <el-tag v-if="q.position" size="small" effect="plain" type="info" style="margin-left:4px">{{ q.position }}</el-tag>
+            <span class="q-text">{{ q.question }}</span>
+            <el-button
+              v-if="showFav"
+              :type="isFav || q.favorited ? 'warning' : 'default'"
+              size="small" circle
+              @click="$emit('fav')"
+              style="flex-shrink:0"
+            >
+              <el-icon><StarFilled v-if="isFav || q.favorited" /><Star v-else /></el-icon>
+            </el-button>
+          </div>
+          <el-button text type="primary" size="small" @click="q._show = !q._show">
+            {{ q._show ? '隐藏答案 ▲' : '查看答案 ▼' }}
+          </el-button>
+          <div v-if="q._show" class="q-detail">
+            <div v-if="q.answer"><strong>答案：</strong>{{ q.answer }}</div>
+            <div v-if="q.answer_guide"><strong>思路：</strong>{{ q.answer_guide }}</div>
+            <div v-if="q.answer_script"><strong>话术：</strong>{{ q.answer_script }}</div>
+            <div v-if="q.tags?.length" style="margin-top:0.4rem">
+              <el-tag v-for="t in q.tags" :key="t" size="small" round style="margin-right:4px">{{ t }}</el-tag>
+            </div>
+          </div>
+        </div>
+      `
+    }
+  }
+}
+</script>
 
 <script setup>
 import { ref, onMounted } from 'vue'
@@ -151,7 +165,6 @@ const activeTab = ref('generate')
 const difficulties = ['入门', '基础', '中等', '面试高频', '深度深挖']
 const questionTypes = ['选择题', '简答题', '项目手撕题', '场景面试题', '压力面试题']
 
-// Generate
 const genPosition = ref('')
 const genDifficulty = ref('中等')
 const genTypes = ref(['简答题', '场景面试题'])
@@ -185,7 +198,6 @@ async function handleSaveAll() {
   finally { saving.value = false }
 }
 
-// Browse
 const filterPosition = ref('')
 const filterDifficulty = ref('')
 const filterType = ref('')
@@ -214,7 +226,6 @@ async function handleFavorite(q) {
   } catch { ElMessage.error('操作失败') }
 }
 
-// Favorites
 const favList = ref([])
 async function loadFavorites() {
   try {
@@ -230,21 +241,49 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.practice-page { min-height: 100vh; background: linear-gradient(180deg, #f0fdfa 0%, #ecfdf5 100%); }
-.main-content { padding: 80px 2rem 2rem; max-width: 1100px; margin: 0 auto; }
-.page-title { font-size: 1.8rem; color: #0f766e; margin-bottom: 1.5rem; }
-.gen-card { background: #fff; border-radius: 12px; padding: 1.5rem; border: 1px solid #ccfbf1; margin-bottom: 1rem; }
-.filter-bar { display: flex; gap: 0.75rem; margin-bottom: 1rem; align-items: center; background: #fff; border-radius: 12px; padding: 1rem 1.5rem; border: 1px solid #ccfbf1; }
-.q-section { margin-top: 1rem; }
-.section-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; color: #0f766e; font-weight: 600; }
-.q-card {
-  background: #fff; border: 1px solid #ccfbf1; border-radius: 10px; padding: 1rem 1.25rem; margin-bottom: 0.75rem;
-  transition: box-shadow 0.15s;
+.practice-page { min-height: 100vh; background: var(--bg-page); }
+.main-content { padding: 80px 1.5rem 2rem; max-width: 1100px; margin: 0 auto; }
+.page-title {
+  font-size: 1.7rem; color: var(--text-primary); margin-bottom: 1.5rem;
+  display: flex; align-items: center; font-weight: 700;
 }
-.q-card:hover { box-shadow: 0 2px 12px rgba(15,118,110,0.06); }
+
+.card {
+  background: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-xs);
+}
+
+.main-tabs :deep(.el-tabs__content) { padding: 1.25rem; }
+.tab-label { display: flex; align-items: center; gap: 4px; }
+
+.gen-card { padding: 1.5rem; margin-bottom: 1rem; }
+
+.filter-bar {
+  display: flex; gap: 0.75rem; margin-bottom: 1rem; align-items: center;
+  padding: 1rem 1.5rem;
+}
+
+.q-section { margin-top: 1rem; }
+.section-head {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 1rem; color: var(--text-primary); font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.q-card { padding: 1rem 1.25rem; margin-bottom: 0.75rem; }
 .q-top { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
-.q-idx { background: #0d9488; color: #fff; border-radius: 4px; padding: 1px 6px; font-size: 0.8rem; flex-shrink: 0; }
-.q-text { font-weight: 600; color: #0f766e; flex: 1; min-width: 200px; margin-left: 0.5rem; }
-.q-detail { margin-top: 0.75rem; padding: 0.75rem; background: #f8fafb; border-radius: 8px; font-size: 0.9rem; color: #555; line-height: 1.6; }
-.q-detail div { margin-top: 0.3rem; }
+.q-idx {
+  background: var(--green-600); color: #fff;
+  border-radius: 6px; padding: 2px 8px;
+  font-size: 0.78rem; flex-shrink: 0; font-weight: 700;
+}
+.q-text { font-weight: 600; color: var(--text-primary); flex: 1; min-width: 200px; margin-left: 0.5rem; }
+.q-detail {
+  margin-top: 0.75rem; padding: 0.85rem;
+  background: var(--bg-subtle); border-radius: var(--radius-md);
+  font-size: 0.9rem; color: var(--text-secondary); line-height: 1.6;
+}
+.q-detail div { margin-top: 0.35rem; }
 </style>

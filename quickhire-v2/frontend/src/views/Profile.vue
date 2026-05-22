@@ -2,17 +2,25 @@
   <div class="profile-page">
     <NavBar />
     <main class="main-content">
-      <h1 class="page-title">👤 个人中心</h1>
+      <h1 class="page-title">
+        <el-icon style="margin-right:8px"><UserFilled /></el-icon>
+        个人中心
+      </h1>
 
-      <el-tabs type="border-card">
+      <el-tabs type="border-card" class="main-tabs">
         <!-- API Config -->
-        <el-tab-pane label="🔑 API 配置">
-          <el-form label-width="120px">
+        <el-tab-pane name="api">
+          <template #label>
+            <span class="tab-label">
+              <el-icon><Key /></el-icon> API 配置
+            </span>
+          </template>
+          <el-form label-width="100px" class="profile-form">
             <el-form-item label="API Key">
-              <el-input v-model="apiKey" type="password" show-password placeholder="输入 DashScope API Key" />
+              <el-input v-model="apiKey" type="password" show-password placeholder="输入 API Key" size="large" />
             </el-form-item>
             <el-form-item label="模型">
-              <el-select v-model="apiModel">
+              <el-select v-model="apiModel" size="large">
                 <el-option v-for="m in models" :key="m" :label="m" :value="m" />
               </el-select>
             </el-form-item>
@@ -24,16 +32,21 @@
         </el-tab-pane>
 
         <!-- Profile Info -->
-        <el-tab-pane label="👤 个人信息">
-          <el-form label-width="100px">
+        <el-tab-pane name="info">
+          <template #label>
+            <span class="tab-label">
+              <el-icon><User /></el-icon> 个人信息
+            </span>
+          </template>
+          <el-form label-width="100px" class="profile-form">
             <el-form-item label="昵称">
-              <el-input v-model="profile.name" />
+              <el-input v-model="profile.name" size="large" />
             </el-form-item>
             <el-form-item label="邮箱">
-              <el-input v-model="profile.email" />
+              <el-input v-model="profile.email" size="large" />
             </el-form-item>
             <el-form-item label="手机号">
-              <el-input v-model="profile.phone" />
+              <el-input v-model="profile.phone" size="large" />
             </el-form-item>
             <el-form-item>
               <el-button type="primary" @click="updateProfile">保存</el-button>
@@ -41,17 +54,22 @@
           </el-form>
         </el-tab-pane>
 
-        <!-- Change Password -->
-        <el-tab-pane label="🔒 修改密码">
-          <el-form label-width="100px">
+        <!-- Password -->
+        <el-tab-pane name="password">
+          <template #label>
+            <span class="tab-label">
+              <el-icon><Lock /></el-icon> 修改密码
+            </span>
+          </template>
+          <el-form label-width="100px" class="profile-form">
             <el-form-item label="原密码">
-              <el-input v-model="pw.old" type="password" show-password />
+              <el-input v-model="pw.old" type="password" show-password size="large" />
             </el-form-item>
             <el-form-item label="新密码">
-              <el-input v-model="pw.new1" type="password" show-password />
+              <el-input v-model="pw.new1" type="password" show-password size="large" />
             </el-form-item>
             <el-form-item label="确认密码">
-              <el-input v-model="pw.new2" type="password" show-password />
+              <el-input v-model="pw.new2" type="password" show-password size="large" />
             </el-form-item>
             <el-form-item>
               <el-button type="primary" @click="changePassword">修改密码</el-button>
@@ -60,7 +78,12 @@
         </el-tab-pane>
 
         <!-- Resume History -->
-        <el-tab-pane label="📄 简历历史">
+        <el-tab-pane name="history">
+          <template #label>
+            <span class="tab-label">
+              <el-icon><Document /></el-icon> 简历历史
+            </span>
+          </template>
           <el-table :data="history" v-if="history.length">
             <el-table-column prop="version_number" label="版本" width="80" />
             <el-table-column prop="target_position" label="目标岗位" />
@@ -75,27 +98,40 @@
           <el-empty v-else description="暂无简历" />
         </el-tab-pane>
 
-        <!-- Data Export -->
-        <el-tab-pane label="💾 数据导出">
-          <p>导出所有个人数据（简历、面试记录、求职记录）为 JSON 格式。</p>
-          <el-button type="primary" @click="exportData">导出 JSON</el-button>
+        <!-- Export -->
+        <el-tab-pane name="export">
+          <template #label>
+            <span class="tab-label">
+              <el-icon><Download /></el-icon> 数据导出
+            </span>
+          </template>
+          <p class="tab-desc">导出所有个人数据（简历、面试记录、求职记录）为 JSON 格式。</p>
+          <el-button type="primary" @click="exportData">
+            <el-icon style="margin-right:4px"><Download /></el-icon>
+            导出 JSON
+          </el-button>
         </el-tab-pane>
 
         <!-- Preferences -->
-        <el-tab-pane label="⚙️ 偏好设置">
-          <el-form label-width="120px">
+        <el-tab-pane name="prefs">
+          <template #label>
+            <span class="tab-label">
+              <el-icon><Setting /></el-icon> 偏好设置
+            </span>
+          </template>
+          <el-form label-width="130px" class="profile-form">
             <el-form-item label="默认优化风格">
-              <el-select v-model="prefs.optimization_style">
+              <el-select v-model="prefs.optimization_style" size="large">
                 <el-option v-for="s in styles" :key="s" :label="s" :value="s" />
               </el-select>
             </el-form-item>
             <el-form-item label="默认面试难度">
-              <el-select v-model="prefs.interview_difficulty">
+              <el-select v-model="prefs.interview_difficulty" size="large">
                 <el-option v-for="d in difficulties" :key="d" :label="d" :value="d" />
               </el-select>
             </el-form-item>
             <el-form-item label="默认题目数量">
-              <el-input-number v-model="prefs.question_count" :min="3" :max="15" />
+              <el-input-number v-model="prefs.question_count" :min="3" :max="15" size="large" />
             </el-form-item>
             <el-form-item>
               <el-button type="primary" @click="savePrefs">保存偏好</el-button>
@@ -141,7 +177,7 @@ onMounted(async () => {
     if (data.question_count) prefs.question_count = data.question_count
     if (data.api_model) apiModel.value = data.api_model
     if (data.api_key) apiKey.value = '••••••••'
-  } catch { /* not configured yet */ }
+  } catch { /* */ }
   try {
     const { data } = await api.get('/profile/api-config')
     if (data.api_key) apiKey.value = '••••••••'
@@ -215,7 +251,24 @@ function loadResume(row) {
 </script>
 
 <style scoped>
-.profile-page { min-height: 100vh; background: linear-gradient(180deg, #f0fdfa 0%, #ecfdf5 100%); }
-.main-content { padding: 80px 2rem 2rem; max-width: 900px; margin: 0 auto; }
-.page-title { font-size: 1.8rem; color: #0f766e; margin-bottom: 1.5rem; }
+.profile-page { min-height: 100vh; background: var(--bg-page); }
+.main-content { padding: 80px 1.5rem 2rem; max-width: 900px; margin: 0 auto; }
+.page-title {
+  font-size: 1.7rem; color: var(--text-primary);
+  margin-bottom: 1.5rem; display: flex; align-items: center; font-weight: 700;
+}
+
+.main-tabs :deep(.el-tabs__content) {
+  padding: 1.5rem;
+}
+.tab-label { display: flex; align-items: center; gap: 4px; }
+
+.profile-form {
+  max-width: 480px;
+}
+.tab-desc {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
 </style>
