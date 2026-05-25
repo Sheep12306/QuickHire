@@ -1,5 +1,6 @@
-import asyncio, json
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+import asyncio, json, io
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from schemas import (
     OptimizeRequest, DiagnoseRequest, QuickScanRequest,
@@ -242,6 +243,59 @@ def get_latest(
     if not result:
         raise HTTPException(status_code=404, detail="No resume found")
     return result
+
+
+from fastapi.responses import StreamingResponse
+from urllib.parse import quote
+from utils.export_utils import generate_pdf_resume, TEMPLATES
+
+
+@router.post("/export-pdf")
+async def export_pdf(
+    template_id: int = Form(...),
+    content: str = Form(...),
+    page_limit: int | None = Form(None),
+    photo: UploadFile | None = File(None),
+):
+    """Generate a PDF resume with template selection and optional photo."""
+    photo_bytes = None
+    if photo:
+        photo_bytes = await photo.read()
+
+    try:
+        pdf_bytes = await asyncio.to_thread(
+            generate_pdf_resume,
+            content=content,
+            template_id=template_id,
+            page_limit=page_limit,
+            photo_bytes=photo_bytes,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"PDF generation failed: {str(e)}")
+
+    filename = "resume.pdf"
+    # Use candidate name if we can extract it (ASCII-safe fallback)
+    first_line = content.split("\n")[0].strip() if content else ""
+    name_match = re.match(r"^([^\s|｜]+)", first_line)
+    if name_match:
+        safe_name = re.sub(r"[^a-zA-Z0-9_]", "", name_match.group(1))
+        if safe_name:
+            filename = f"{safe_name}.pdf"
+
+    return StreamingResponse(
+        io.BytesIO(pdf_bytes),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/templates")
+def list_templates():
+    """Return available PDF templates info."""
+    return [
+        {"id": tid, "name": name, "description": desc}
+        for tid, (name, desc, _fn) in TEMPLATES.items()
+    ]
 
 
 @router.patch("/{resume_id}/set-current")

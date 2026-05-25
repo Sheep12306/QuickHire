@@ -137,7 +137,7 @@
                     <el-icon style="margin-right:4px"><CopyDocument /></el-icon>
                     复制简历
                   </el-button>
-                  <el-button type="success" @click="exportPdf">
+                  <el-button type="success" @click="handleExportClick">
                     <el-icon style="margin-right:4px"><Printer /></el-icon>
                     导出 PDF
                   </el-button>
@@ -318,6 +318,12 @@
           <el-empty v-if="!store.hasQuestions && !store.isGenerating" description="输入目标岗位，配置参数后点击「生成面试题」" />
         </el-tab-pane>
       </el-tabs>
+
+      <!-- PDF Export Dialog -->
+      <TemplatePicker
+        v-model="showExportDialog"
+        :resume-text="store.optimizedResult?.optimized_text || ''"
+      />
     </main>
   </div>
 </template>
@@ -328,6 +334,7 @@ import { ElMessage } from 'element-plus'
 import { useAuthStore } from '../stores/auth'
 import { useResumeStore } from '../stores/resume'
 import NavBar from '../components/layout/NavBar.vue'
+import TemplatePicker from '../components/resume/TemplatePicker.vue'
 import { generatePracticeQuestions, savePracticeQuestions, toggleFavorite } from '../api/practice'
 
 const auth = useAuthStore()
@@ -343,6 +350,11 @@ const qDifficulty = ref('中等')
 const qTypes = ref(['简答题', '项目手撕题'])
 const qCount = ref(5)
 const savingQuestions = ref(false)
+const showExportDialog = ref(false)
+
+function handleExportClick() {
+  ElMessage.warning('PDF 导出功能正在维护中，敬请期待')
+}
 
 const diagnosisData = computed(() => {
   const ar = store.analysisResult
@@ -473,50 +485,6 @@ async function handleFavQuestion(q, idx) {
 
 function copyText(text) {
   navigator.clipboard.writeText(text).then(() => ElMessage.success('已复制到剪贴板'))
-}
-
-function exportPdf() {
-  const text = store.optimizedResult?.optimized_text
-  if (!text) return
-  const lines = text.split('\n').filter(l => l.trim())
-  let name = lines[0]?.split(/[|｜]/)[0]?.trim() || ''
-  name = name.replace(/[：:，,。●◆\s]+$/, '').slice(0, 30)
-  const fullText = text
-  const emailMatch = fullText.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/)
-  const phoneMatch = fullText.match(/(1[3-9]\d{9})/)
-  const email = emailMatch ? emailMatch[1] : ''
-  const phone = phoneMatch ? phoneMatch[1] : ''
-  const escHtml = (s) => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-  const bodyHtml = escHtml(text).split('\n').map(line => line.trim() || '<br>').join('\n')
-
-  const html = `<!DOCTYPE html>
-<html lang="zh-CN">
-<head><meta charset="UTF-8"><title>${name || '简历'}</title>
-<style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif; font-size: 14px; line-height: 1.8; color: #222; max-width: 780px; margin: 0 auto; padding: 50px 55px; }
-  .header { text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2.5px solid #2c3e50; }
-  .header h1 { font-size: 28px; letter-spacing: 4px; margin-bottom: 10px; color: #2c3e50; font-weight: 700; }
-  .header .contact { font-size: 13px; color: #555; }
-  .header .contact span { margin: 0 12px; }
-  .resume-body { white-space: pre-wrap; font-size: 13.5px; }
-  @media print { body { padding: 35px 45px; } }
-</style></head>
-<body>
-  <div class="header">
-    <h1>${name || '简历'}</h1>
-    <div class="contact">
-      ${email ? '<span>📧 ' + email + '</span>' : ''}
-      ${phone ? '<span>📱 ' + phone + '</span>' : ''}
-    </div>
-  </div>
-  <div class="resume-body">${bodyHtml}</div>
-</body></html>`
-
-  const w = window.open('', '_blank', 'width=900,height=700')
-  w.document.write(html)
-  w.document.close()
-  setTimeout(() => w.print(), 500)
 }
 
 function copyQuestions() {
