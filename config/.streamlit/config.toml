@@ -1,6 +1,0 @@
-[client]
-showSidebarNavigation = false
-
-[server]
-enableXsrfProtection = true
-maxUploadSize = 10
