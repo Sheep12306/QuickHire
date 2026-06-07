@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   test-backend:
     runs-on: ubuntu-latest
@@ -43,7 +46,7 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT || 22 }}
-          script_stop: true
           script: |
+            set -e
             cd /opt/quickhire || { echo "Project directory not found. Clone the repo first."; exit 1; }
             bash quickhire-v2/deploy.sh
