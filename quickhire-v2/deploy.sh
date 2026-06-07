@@ -14,13 +14,18 @@ git pull origin main
 PYTHON=python3.11
 
 echo "=== Setting up Python venv ==="
+if [ -f "$VENV_DIR/bin/python3" ]; then
+    VENV_PY_VER=$("$VENV_DIR/bin/python3" --version 2>&1 | awk '{print $2}')
+    HOST_PY_VER=$($PYTHON --version 2>&1 | awk '{print $2}')
+    if [ "$VENV_PY_VER" != "$HOST_PY_VER" ]; then
+        echo "Python version mismatch (venv: $VENV_PY_VER, host: $HOST_PY_VER), recreating venv..."
+        rm -rf "$VENV_DIR"
+    fi
+fi
 if [ ! -d "$VENV_DIR" ]; then
     $PYTHON -m venv "$VENV_DIR"
 fi
 source "$VENV_DIR/bin/activate"
-
-echo "=== Checking Python version ==="
-$PYTHON --version
 
 echo "=== Installing backend dependencies ==="
 cd "$BACKEND_DIR"
