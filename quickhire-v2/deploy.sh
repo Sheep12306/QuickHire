@@ -31,9 +31,8 @@ pip install -r requirements.txt
 
 echo "=== Building frontend ==="
 cd "$FRONTEND_DIR"
-# Clean old build files (preserve .user.ini which is write-protected by hosting panel)
-mkdir -p dist
-find dist -mindepth 1 -not -name '.user.ini' -exec rm -rf {} \; 2>/dev/null || true
+# NOTE: dist/.user.ini is write-protected by Alibaba Cloud hosting panel.
+# We set emptyOutDir: false in vite.config.js so vite overwrites in place.
 npm ci --legacy-peer-deps
 npm run build
 
