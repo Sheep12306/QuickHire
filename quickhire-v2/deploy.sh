@@ -11,14 +11,16 @@ echo "=== Pulling latest code ==="
 cd "$PROJECT_DIR"
 git pull origin main
 
+PYTHON=python3.11
+
 echo "=== Setting up Python venv ==="
 if [ ! -d "$VENV_DIR" ]; then
-    python3 -m venv "$VENV_DIR"
+    $PYTHON -m venv "$VENV_DIR"
 fi
 source "$VENV_DIR/bin/activate"
 
 echo "=== Checking Python version ==="
-python3 --version
+$PYTHON --version
 
 echo "=== Installing backend dependencies ==="
 cd "$BACKEND_DIR"
