@@ -17,8 +17,12 @@ if [ ! -d "$VENV_DIR" ]; then
 fi
 source "$VENV_DIR/bin/activate"
 
+echo "=== Checking Python version ==="
+python3 --version
+
 echo "=== Installing backend dependencies ==="
 cd "$BACKEND_DIR"
+pip install --upgrade pip setuptools wheel
 pip install -r requirements.txt
 
 echo "=== Building frontend ==="
