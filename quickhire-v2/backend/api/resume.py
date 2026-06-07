@@ -102,15 +102,25 @@ async def optimize_resume(
         target_position=req.target_position,
         optimization_style=req.optimization_style,
     )
-    # Get per-user API key or fall back to config default
-    api_key = None
+    # Get per-user API config or fall back to defaults
+    api_key = api_model = api_base_url = None
+    has_own_key = False
     if current_user:
         from services.user_settings_service import UserSettingsService
         prefs = UserSettingsService.get_preferences(db, current_user.id)
         api_key = prefs.get("api_key")
+        api_model = prefs.get("api_model")
+        api_base_url = prefs.get("api_base_url")
+        has_own_key = bool(api_key)
+        # Rate limit: free users get 2/day unless they have their own API key
+        from services.usage_service import UsageService, UsageError
+        try:
+            UsageService.check_and_increment(db, current_user.id, "optimize", has_own_key)
+        except UsageError as e:
+            raise HTTPException(status_code=429, detail=str(e))
 
     raw = await asyncio.to_thread(
-        call_qwen_api_with_retry, prompt, api_key=api_key
+        call_qwen_api_with_retry, prompt, api_key=api_key, api_model=api_model, api_base_url=api_base_url
     )
     parts = _split_ai_result(raw)
 
@@ -145,14 +155,23 @@ async def diagnose_resume(
         resume_text=req.resume_text,
         target_position=req.target_position,
     )
-    api_key = None
+    api_key = api_model = api_base_url = None
+    has_own_key = False
     if current_user:
         from services.user_settings_service import UserSettingsService
         prefs = UserSettingsService.get_preferences(db, current_user.id)
         api_key = prefs.get("api_key")
+        api_model = prefs.get("api_model")
+        api_base_url = prefs.get("api_base_url")
+        has_own_key = bool(api_key)
+        from services.usage_service import UsageService, UsageError
+        try:
+            UsageService.check_and_increment(db, current_user.id, "diagnose", has_own_key)
+        except UsageError as e:
+            raise HTTPException(status_code=429, detail=str(e))
 
     raw = await asyncio.to_thread(
-        call_qwen_api_with_retry, prompt, api_key=api_key
+        call_qwen_api_with_retry, prompt, api_key=api_key, api_model=api_model, api_base_url=api_base_url
     )
     result = safe_json_parse(raw)
 
@@ -191,11 +210,13 @@ async def generate_questions(
         for p in parsed.get("projects", [])
     ]
 
-    api_key = None
+    api_key = api_model = api_base_url = None
     if current_user:
         from services.user_settings_service import UserSettingsService
         prefs = UserSettingsService.get_preferences(db, current_user.id)
         api_key = prefs.get("api_key")
+        api_model = prefs.get("api_model")
+        api_base_url = prefs.get("api_base_url")
 
     prompt = build_interview_question_prompt(
         resume_summary=summary,
@@ -207,7 +228,7 @@ async def generate_questions(
         question_count=req.question_count,
     )
     raw = await asyncio.to_thread(
-        call_qwen_api_with_retry, prompt, api_key=api_key
+        call_qwen_api_with_retry, prompt, api_key=api_key, api_model=api_model, api_base_url=api_base_url
     )
     result = safe_json_parse(raw)
 

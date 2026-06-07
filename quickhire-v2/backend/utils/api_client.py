@@ -92,11 +92,18 @@ def validate_prompt(prompt: str) -> bool:
     return True
 
 
-def call_qwen_api(prompt: str, api_key: Optional[str] = None) -> str:
+def call_qwen_api(
+    prompt: str,
+    api_key: Optional[str] = None,
+    api_model: Optional[str] = None,
+    api_base_url: Optional[str] = None,
+) -> str:
     key = api_key or API_KEY
+    model = api_model or API_MODEL
+    base_url = api_base_url or API_BASE_URL
 
     if not validate_api_key(key):
-        raise ValidationError("API密钥无效，请检查.env文件中的DASHSCOPE_API_KEY配置")
+        raise ValidationError("API密钥无效，请检查API Key配置")
 
     if not validate_prompt(prompt):
         raise ValidationError("Prompt内容不能为空")
@@ -107,13 +114,13 @@ def call_qwen_api(prompt: str, api_key: Optional[str] = None) -> str:
     }
 
     payload = {
-        "model": API_MODEL,
+        "model": model,
         "messages": [{"role": "user", "content": prompt}]
     }
 
     try:
         response = requests.post(
-            API_BASE_URL,
+            base_url,
             headers=headers,
             json=payload,
             timeout=API_TIMEOUT
@@ -129,7 +136,7 @@ def call_qwen_api(prompt: str, api_key: Optional[str] = None) -> str:
         elif response.status_code == 429:
             raise APIError("API请求频率超限，请稍后重试")
         elif response.status_code >= 500:
-            raise APIError(f"通义千问服务内部错误: {response.status_code}")
+            raise APIError(f"服务内部错误: {response.status_code}")
         else:
             raise APIError(f"API调用失败: {response.status_code}, {response.text}")
 
@@ -141,12 +148,23 @@ def call_qwen_api(prompt: str, api_key: Optional[str] = None) -> str:
         raise APIError(f"请求异常: {str(e)}")
 
 
-def call_qwen_api_with_retry(prompt: str, api_key: Optional[str] = None, max_retries: Optional[int] = None) -> str:
+def call_qwen_api_with_retry(
+    prompt: str,
+    api_key: Optional[str] = None,
+    api_model: Optional[str] = None,
+    api_base_url: Optional[str] = None,
+    max_retries: Optional[int] = None,
+) -> str:
     retries = max_retries or API_MAX_RETRIES
 
     for attempt in range(retries):
         try:
-            return call_qwen_api(prompt, api_key)
+            return call_qwen_api(
+                prompt,
+                api_key=api_key,
+                api_model=api_model,
+                api_base_url=api_base_url,
+            )
         except APIError as e:
             if attempt == retries - 1:
                 raise
@@ -158,13 +176,19 @@ def call_qwen_api_with_retry(prompt: str, api_key: Optional[str] = None, max_ret
     raise APIError("API调用失败，已达到最大重试次数")
 
 
-def test_api_connection(api_key: Optional[str] = None) -> dict:
+def test_api_connection(
+    api_key: Optional[str] = None,
+    api_model: Optional[str] = None,
+    api_base_url: Optional[str] = None,
+) -> dict:
     key = api_key or API_KEY
+    model = api_model or API_MODEL
+    base_url = api_base_url or API_BASE_URL
 
     test_prompt = "你好，请回复OK"
 
     try:
-        result = call_qwen_api(test_prompt, key)
+        result = call_qwen_api(test_prompt, api_key=key, api_model=model, api_base_url=base_url)
         return {
             "success": True,
             "message": "API连接测试成功",

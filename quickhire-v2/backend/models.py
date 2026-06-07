@@ -11,6 +11,9 @@ class User(Base):
     phone = Column(String(20), unique=True, nullable=True)
     password_hash = Column(String(255), nullable=False)
     display_name = Column(String(100), nullable=True)
+    job_preference = Column(String(200), nullable=True)
+    city = Column(String(100), nullable=True)
+    target_city = Column(String(100), nullable=True)
     is_active = Column(Boolean, default=True)
     last_login_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, server_default=func.now())
@@ -105,6 +108,27 @@ class UserSettings(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
     preferences = Column(Text, default="{}")
+
+
+class DailyUsage(Base):
+    __tablename__ = "daily_usage"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    usage_date = Column(String(10), nullable=False)  # YYYY-MM-DD
+    optimize_count = Column(Integer, default=0)
+    diagnose_count = Column(Integer, default=0)
+
+
+class VerificationCode(Base):
+    __tablename__ = "verification_codes"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    email = Column(String(255), nullable=False, index=True)
+    code = Column(String(6), nullable=False)
+    used = Column(Boolean, default=False)
+    expires_at = Column(DateTime, nullable=False)
+    created_at = Column(DateTime, server_default=func.now())
 
 
 class PracticeQuestion(Base):

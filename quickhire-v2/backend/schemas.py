@@ -28,6 +28,9 @@ class UserResponse(BaseModel):
     email: str | None
     phone: str | None
     display_name: str | None
+    job_preference: str | None = None
+    city: str | None = None
+    target_city: str | None = None
     created_at: datetime | None
 
     model_config = {"from_attributes": True}
@@ -128,6 +131,9 @@ class ProfileUpdateRequest(BaseModel):
     display_name: str | None = None
     email: str | None = None
     phone: str | None = None
+    job_preference: str | None = None
+    city: str | None = None
+    target_city: str | None = None
 
 
 class PreferencesRequest(BaseModel):
@@ -150,6 +156,23 @@ class ApplicationResponse(BaseModel):
     applied_at: str | None
     notes: str | None
     created_at: str | None
+
+
+# ── Email verification ─────────────────────────────────────────
+class SendCodeRequest(BaseModel):
+    email: str
+
+
+class VerifyCodeLoginRequest(BaseModel):
+    email: str
+    code: str
+
+
+# ── API Config ──────────────────────────────────────────────────
+class TestApiRequest(BaseModel):
+    api_key: str | None = None
+    api_model: str | None = None
+    api_base_url: str | None = None
 
 
 # ── Generic ───────────────────────────────────────────────────

@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 from schemas import (
     ChangePasswordRequest, ProfileUpdateRequest,
-    PreferencesRequest, UserResponse, MessageResponse,
+    PreferencesRequest, TestApiRequest, UserResponse, MessageResponse,
 )
 from dependencies import get_db, get_current_user
 from models import User
@@ -62,6 +62,9 @@ def update_profile(
         display_name=req.display_name,
         email=req.email,
         phone=req.phone,
+        job_preference=req.job_preference,
+        city=req.city,
+        target_city=req.target_city,
     )
     return {"ok": True}
 
@@ -77,6 +80,9 @@ def export_data(
             "email": current_user.email,
             "phone": current_user.phone,
             "display_name": current_user.display_name,
+            "job_preference": current_user.job_preference,
+            "city": current_user.city,
+            "target_city": current_user.target_city,
         },
         "resumes": ResumeService.get_resume_history(db, uid),
         "interviews": InterviewService.get_answers(db, uid),
@@ -86,9 +92,17 @@ def export_data(
 
 
 @router.post("/test-api")
-def test_api(current_user: User = Depends(get_current_user)):
-    ok = test_api_connection()
-    return {"connected": ok}
+def test_api(
+    req: TestApiRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    from services.user_settings_service import UserSettingsService
+    prefs = UserSettingsService.get_preferences(db, current_user.id)
+    key = req.api_key or prefs.get("api_key")
+    model = req.api_model or prefs.get("api_model")
+    base_url = req.api_base_url or prefs.get("api_base_url")
+    return test_api_connection(api_key=key, api_model=model, api_base_url=base_url)
 
 
 @router.put("/api-config")
@@ -108,6 +122,18 @@ def save_api_config(
     return {"ok": True}
 
 
+@router.get("/usage")
+def get_usage(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    from services.user_settings_service import UserSettingsService
+    from services.usage_service import UsageService
+    prefs = UserSettingsService.get_preferences(db, current_user.id)
+    has_own_key = bool(prefs.get("api_key"))
+    return UsageService.get_remaining(db, current_user.id, has_own_key)
+
+
 @router.get("/api-config")
 def get_api_config(
     current_user: User = Depends(get_current_user),
@@ -116,6 +142,6 @@ def get_api_config(
     prefs = UserSettingsService.get_preferences(db, current_user.id)
     return {
         "api_key": bool(prefs.get("api_key")),
-        "api_model": prefs.get("api_model", "qwen-plus"),
+        "api_model": prefs.get("api_model", ""),
         "api_base_url": prefs.get("api_base_url", ""),
     }

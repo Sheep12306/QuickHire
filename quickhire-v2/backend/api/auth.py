@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from schemas import RegisterRequest, LoginRequest, TokenResponse, UserResponse
+from schemas import RegisterRequest, LoginRequest, TokenResponse, UserResponse, SendCodeRequest, VerifyCodeLoginRequest
 from dependencies import get_db, get_current_user
 from services.auth_service import AuthService, AuthError
+from services.email_service import EmailService, EmailError
 from security import create_access_token
 from models import User
 
@@ -35,6 +36,45 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
         user = AuthService.login(db=db, credential=req.credential, password=req.password)
     except AuthError as e:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
+
+    token = create_access_token({"sub": str(user.id)})
+    return TokenResponse(
+        access_token=token,
+        user=UserResponse.model_validate(user),
+    )
+
+
+@router.post("/send-code")
+def send_code(req: SendCodeRequest, db: Session = Depends(get_db)):
+    if not AuthService.validate_email(req.email):
+        raise HTTPException(status_code=400, detail="邮箱格式不正确")
+    try:
+        EmailService.send_verification_code(db, req.email)
+    except EmailError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    return {"ok": True, "message": "验证码已发送"}
+
+
+@router.post("/verify-code-login", response_model=TokenResponse)
+def verify_code_login(req: VerifyCodeLoginRequest, db: Session = Depends(get_db)):
+    if not AuthService.validate_email(req.email):
+        raise HTTPException(status_code=400, detail="邮箱格式不正确")
+    if not EmailService.verify_code(db, req.email, req.code):
+        raise HTTPException(status_code=400, detail="验证码错误或已过期")
+
+    # Find or create user
+    user = db.query(User).filter(User.email == req.email).first()
+    if not user:
+        user = User(
+            email=req.email,
+            password_hash="",  # verification-code-only users have no password
+            display_name=req.email.split("@")[0],
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+    if not user.is_active:
+        raise HTTPException(status_code=403, detail="账号已被停用")
 
     token = create_access_token({"sub": str(user.id)})
     return TokenResponse(

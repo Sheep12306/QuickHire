@@ -354,10 +354,56 @@ const features = [
 }
 
 @media (max-width: 768px) {
-  .hero { padding: 120px 1.5rem 60px; }
-  .feature-grid { grid-template-columns: repeat(2, 1fr); }
-  .steps-row { flex-direction: column; align-items: center; gap: 1.5rem; }
+  .hero { padding: 90px 1.25rem 40px; }
+  .hero-title { font-size: clamp(1.6rem, 7vw, 2rem); margin-bottom: 0.75rem; }
+  .hero-subtitle { font-size: 0.95rem; max-width: 100%; margin-bottom: 1.5rem; }
+  .hero-actions { flex-direction: column; align-items: center; }
+  .hero-actions .el-button { width: 100%; max-width: 320px; }
+  .hero-blob--1 { width: 200px; height: 200px; }
+  .hero-blob--2 { width: 150px; height: 150px; }
+
+  .stats-section { padding: 0 1rem 1.5rem; }
+  .stats-row { flex-wrap: wrap; gap: 0 1.5rem; padding: 1rem 0.75rem; }
+  .stat-num { font-size: 1.25rem; }
+  .stat-label { font-size: 0.72rem; }
+
+  .section-title { font-size: 1.2rem; margin-bottom: 1.25rem; }
+  .steps-section { padding: 1.5rem 0; }
+  .steps-row { flex-direction: column; align-items: center; gap: 1rem; }
   .steps-row::before { display: none; }
-  .hero-title { font-size: 2rem; }
+  .step-item { max-width: 280px; }
+  .step-icon-wrap { width: 52px; height: 52px; margin-bottom: 0.5rem; }
+  .step-icon { font-size: 1.3rem; }
+  .step-title { font-size: 0.9rem; }
+  .step-desc { font-size: 0.78rem; }
+
+  .features-section { padding: 1.5rem 0 2rem; }
+  .feature-grid { grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
+  .feature-card { padding: 1rem 0.85rem; }
+  .fc-icon-wrap { width: 40px; height: 40px; border-radius: 10px; margin-bottom: 0.5rem; }
+  .fc-icon { font-size: 1.2rem; }
+  .fc-title { font-size: 0.88rem; }
+  .fc-desc { font-size: 0.76rem; }
+
+  .container { padding: 0 1rem; }
+  .footer { padding: 1.25rem 0; }
+}
+
+@media (max-width: 480px) {
+  .hero { padding: 75px 1rem 32px; }
+  .hero-title { font-size: 1.5rem; }
+  .hero-subtitle { font-size: 0.85rem; }
+
+  .stats-section { padding: 0 0.75rem 1rem; }
+  .stats-row { gap: 0 0.75rem; padding: 0.75rem 0.5rem; }
+  .stat-num { font-size: 1.05rem; }
+  .stat-label { font-size: 0.68rem; }
+
+  .feature-grid { grid-template-columns: 1fr; gap: 0.5rem; }
+  .feature-card { padding: 0.85rem 0.75rem; }
+  .fc-title { font-size: 0.85rem; }
+  .fc-desc { font-size: 0.74rem; }
+
+  .section-title { font-size: 1.1rem; margin-bottom: 1rem; }
 }
 </style>

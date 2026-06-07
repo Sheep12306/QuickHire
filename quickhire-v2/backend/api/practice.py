@@ -35,13 +35,17 @@ async def generate_questions(
         question_types=req.question_types,
         question_count=req.question_count,
     )
-    api_key = None
+    api_key = api_model = api_base_url = None
     if current_user:
         from services.user_settings_service import UserSettingsService
         prefs = UserSettingsService.get_preferences(db, current_user.id)
         api_key = prefs.get("api_key")
+        api_model = prefs.get("api_model")
+        api_base_url = prefs.get("api_base_url")
 
-    raw = await asyncio.to_thread(call_qwen_api_with_retry, prompt, api_key=api_key)
+    raw = await asyncio.to_thread(
+        call_qwen_api_with_retry, prompt, api_key=api_key, api_model=api_model, api_base_url=api_base_url
+    )
     result = safe_json_parse(raw)
     questions = result.get("questions", []) if isinstance(result, dict) else []
     return {"questions": questions, "position": req.target_position}

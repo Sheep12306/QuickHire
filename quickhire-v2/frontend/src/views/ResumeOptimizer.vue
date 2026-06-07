@@ -37,7 +37,7 @@
           <el-input
             v-model="store.targetPosition"
             placeholder="* 目标岗位（必填，如：Python开发工程师）"
-            style="width: 260px"
+            class="position-input"
             clearable
             :class="{ 'is-required': !store.targetPosition }"
           />
@@ -83,13 +83,19 @@
 
           <div class="config-bar">
             <span class="config-label">优化风格：</span>
-            <el-select v-model="store.optimizationStyle" style="width: 160px">
+            <el-select v-model="store.optimizationStyle" class="style-select">
               <el-option v-for="s in styles" :key="s" :label="s" :value="s" />
             </el-select>
-            <el-button type="primary" @click="handleOptimize" :loading="store.isOptimizing" :disabled="!store.hasInput">
+            <el-button type="primary" @click="handleOptimize" :loading="store.isOptimizing" :disabled="!store.hasInput || (!usage.unlimited && usage.optimizeRemaining <= 0)">
               <el-icon style="margin-right:4px"><MagicStick /></el-icon>
               开始优化
             </el-button>
+            <el-tag v-if="auth.isLoggedIn && !usage.unlimited" type="warning" effect="plain" size="small">
+              今日剩余 {{ usage.optimizeRemaining }} 次
+            </el-tag>
+            <el-tag v-else-if="auth.isLoggedIn && usage.unlimited" type="success" effect="plain" size="small">
+              无限制
+            </el-tag>
             <el-button @click="store.clearOptimized()" v-if="store.hasOptimized">清空结果</el-button>
           </div>
 
@@ -165,10 +171,16 @@
               <el-icon style="margin-right:4px"><Lightning /></el-icon>
               快速扫描（本地算法）
             </el-button>
-            <el-button type="primary" @click="store.analyze()" :loading="store.isAnalyzing" :disabled="!store.hasInput">
+            <el-button type="primary" @click="handleAnalyze" :loading="store.isAnalyzing" :disabled="!store.hasInput || (!usage.unlimited && usage.diagnoseRemaining <= 0)">
               <el-icon style="margin-right:4px"><Cpu /></el-icon>
               AI 深度分析
             </el-button>
+            <el-tag v-if="auth.isLoggedIn && !usage.unlimited" type="warning" effect="plain" size="small">
+              今日剩余 {{ usage.diagnoseRemaining }} 次
+            </el-tag>
+            <el-tag v-else-if="auth.isLoggedIn && usage.unlimited" type="success" effect="plain" size="small">
+              无限制
+            </el-tag>
             <el-button @click="store.clearAnalysis()" v-if="store.hasAnalysis">清空结果</el-button>
           </div>
 
@@ -266,11 +278,11 @@
           </template>
 
           <div class="config-bar">
-            <el-input v-model="store.targetPosition" placeholder="* 目标岗位" style="width:200px" />
-            <el-select v-model="qDifficulty" style="width: 120px">
+            <el-input v-model="store.targetPosition" placeholder="* 目标岗位" class="position-input-small" />
+            <el-select v-model="qDifficulty" class="difficulty-select">
               <el-option v-for="d in difficulties" :key="d" :label="d" :value="d" />
             </el-select>
-            <el-select v-model="qTypes" multiple style="width: 260px" placeholder="题目类型">
+            <el-select v-model="qTypes" multiple class="types-select" placeholder="题目类型">
               <el-option v-for="t in questionTypes" :key="t" :label="t" :value="t" />
             </el-select>
             <span class="config-label">数量：</span>
@@ -329,13 +341,14 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '../stores/auth'
 import { useResumeStore } from '../stores/resume'
 import NavBar from '../components/layout/NavBar.vue'
 import TemplatePicker from '../components/resume/TemplatePicker.vue'
 import { generatePracticeQuestions, savePracticeQuestions, toggleFavorite } from '../api/practice'
+import api from '../api'
 
 const auth = useAuthStore()
 const store = useResumeStore()
@@ -351,6 +364,18 @@ const qTypes = ref(['简答题', '项目手撕题'])
 const qCount = ref(5)
 const savingQuestions = ref(false)
 const showExportDialog = ref(false)
+
+const usage = reactive({ unlimited: false, optimizeRemaining: 0, diagnoseRemaining: 0, dailyLimit: 2 })
+
+async function loadUsage() {
+  if (!auth.isLoggedIn) return
+  try {
+    const { data } = await api.get('/profile/usage')
+    Object.assign(usage, data)
+  } catch { /* */ }
+}
+
+onMounted(() => loadUsage())
 
 function handleExportClick() {
   ElMessage.warning('PDF 导出功能正在维护中，敬请期待')
@@ -439,6 +464,12 @@ async function handleOptimize() {
     return
   }
   await store.optimize()
+  loadUsage()
+}
+
+async function handleAnalyze() {
+  await store.analyze()
+  loadUsage()
 }
 
 async function handleGenQuestions() {
@@ -730,4 +761,68 @@ function copyQuestions() {
   line-height: 1.6;
 }
 .q-detail-box div { margin-top: 0.35rem; }
+
+/* ── Responsive input widths ──────────────── */
+.position-input { width: 260px; }
+.position-input-small { width: 200px; }
+.style-select { width: 160px; }
+.difficulty-select { width: 120px; }
+.types-select { width: 260px; }
+
+/* ── Mobile ───────────────────────────────── */
+@media (max-width: 768px) {
+  .main-content { padding: 70px 1rem 1.5rem; }
+
+  /* Input section */
+  .input-section { padding: 1rem; }
+  .input-actions { flex-direction: column; }
+  .input-actions > * { width: 100%; }
+  .position-input { width: 100%; }
+  .upload-compact :deep(.el-upload-dragger) { width: 100%; }
+
+  /* Step progress - hide track, stack items */
+  .step-progress-track { display: none; }
+  .step-progress-items { gap: 1rem; flex-wrap: wrap; }
+  .step-node { flex: 1; min-width: 80px; }
+
+  /* Config bar */
+  .config-bar { flex-direction: column; align-items: stretch; }
+  .config-bar > * { width: 100%; }
+  .style-select, .position-input-small, .difficulty-select, .types-select { width: 100%; }
+
+  /* Result cards */
+  .resume-output-header { flex-direction: column; gap: 0.75rem; align-items: flex-start; }
+  .resume-output-actions { flex-direction: column; width: 100%; }
+  .resume-output-actions .el-button { width: 100%; }
+
+  .analysis-header { flex-direction: column; gap: 0.5rem; align-items: flex-start; padding: 0.75rem 1rem; }
+  .highlight-box { padding: 0.75rem 1rem; }
+  .highlight-box pre { font-size: 0.82rem; }
+
+  /* Score section */
+  .score-section { flex-direction: column; gap: 0.5rem; text-align: center; }
+
+  /* Dimension grid */
+  .dimension-grid { grid-template-columns: 1fr; }
+
+  /* Question cards */
+  .q-card { padding: 0.75rem 1rem; }
+  .q-header { flex-direction: column; align-items: flex-start; }
+  .q-text { margin-left: 0; margin-top: 0.25rem; font-size: 0.88rem; }
+  .q-detail-box { font-size: 0.85rem; }
+
+  /* Resume output */
+  .resume-output { padding: 1rem; }
+  .optimized-text pre { padding: 0.75rem; font-size: 0.82rem; }
+
+  /* Section blocks */
+  .section-block { padding: 0 1rem 0.75rem; }
+  .section-block h3 { font-size: 0.9rem; }
+}
+
+@media (max-width: 480px) {
+  .step-progress-items { gap: 0.5rem; }
+  .step-node-label { font-size: 0.7rem; }
+  .step-node-circle { width: 36px; height: 36px; font-size: 0.75rem; }
+}
 </style>

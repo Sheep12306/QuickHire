@@ -28,6 +28,12 @@ MIN_PASSWORD_LENGTH = int(os.getenv("MIN_PASSWORD_LENGTH", "6"))
 # ── CORS ──────────────────────────────────────────────────────
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")
 
+# ── Email (SMTP) ─────────────────────────────────────────────
+SMTP_HOST = os.getenv("SMTP_HOST", "smtp.qq.com")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+SMTP_USER = os.getenv("SMTP_USER", "")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+
 # ── Domain constants ──────────────────────────────────────────
 RESUME_OPTIMIZATION_STYLES = ["简洁专业", "突出业绩", "技术导向", "创新风格"]
 INTERVIEW_DIFFICULTIES = ["入门", "基础", "中等", "面试高频", "深度深挖"]

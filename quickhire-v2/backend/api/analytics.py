@@ -95,8 +95,10 @@ async def generate_monthly_report(
     from services.user_settings_service import UserSettingsService
     prefs = UserSettingsService.get_preferences(db, uid)
     api_key = prefs.get("api_key")
+    api_model = prefs.get("api_model")
+    api_base_url = prefs.get("api_base_url")
 
     raw = await asyncio.to_thread(
-        call_qwen_api_with_retry, prompt, api_key=api_key
+        call_qwen_api_with_retry, prompt, api_key=api_key, api_model=api_model, api_base_url=api_base_url
     )
     return {"report_text": raw}

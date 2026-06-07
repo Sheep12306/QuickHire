@@ -286,4 +286,43 @@ onMounted(() => {
   font-size: 0.9rem; color: var(--text-secondary); line-height: 1.6;
 }
 .q-detail div { margin-top: 0.35rem; }
+
+@media (max-width: 768px) {
+  .main-content { padding: 70px 1rem 1.5rem; }
+  .page-title { font-size: 1.4rem; }
+
+  /* Filter bar */
+  .filter-bar {
+    flex-wrap: wrap;
+    padding: 0.75rem 1rem;
+  }
+  .filter-bar .el-input,
+  .filter-bar .el-select {
+    width: 100% !important;
+    flex: 1 1 100%;
+  }
+
+  /* Generate card - form inline to stack */
+  .gen-card { padding: 1rem; }
+  .gen-card :deep(.el-form--inline) {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .gen-card :deep(.el-form--inline .el-form-item) {
+    margin-right: 0;
+  }
+  .gen-card :deep(.el-form--inline .el-input),
+  .gen-card :deep(.el-form--inline .el-select) {
+    width: 100% !important;
+  }
+
+  .section-head { flex-direction: column; gap: 0.5rem; align-items: flex-start; }
+
+  .q-card { padding: 0.75rem 1rem; }
+  .q-text { margin-left: 0; font-size: 0.88rem; }
+  .q-detail { font-size: 0.85rem; }
+
+  .main-tabs :deep(.el-tabs__content) { padding: 0.75rem; }
+}
 </style>

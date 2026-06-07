@@ -28,3 +28,15 @@ def get_db():
 
 def init_db():
     Base.metadata.create_all(bind=engine)
+    # Add new columns if they don't exist (SQLite ALTER TABLE migration)
+    with engine.connect() as conn:
+        for col, dtype in [
+            ("job_preference", "VARCHAR(200)"),
+            ("city", "VARCHAR(100)"),
+            ("target_city", "VARCHAR(100)"),
+        ]:
+            try:
+                conn.exec_driver_sql(f"ALTER TABLE users ADD COLUMN {col} {dtype}")
+            except Exception:
+                pass  # column already exists
+        conn.commit()

@@ -48,6 +48,9 @@ class UserSettingsService:
         display_name: str = None,
         email: str = None,
         phone: str = None,
+        job_preference: str = None,
+        city: str = None,
+        target_city: str = None,
     ):
         user = db.query(User).filter(User.id == user_id).first()
         if user:
@@ -57,4 +60,10 @@ class UserSettingsService:
                 user.email = email
             if phone is not None:
                 user.phone = phone
+            if job_preference is not None:
+                user.job_preference = job_preference
+            if city is not None:
+                user.city = city
+            if target_city is not None:
+                user.target_city = target_city
             db.commit()

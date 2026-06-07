@@ -22,7 +22,8 @@
         <div class="panel-form">
           <el-tabs v-model="activeTab" class="login-tabs" stretch>
             <el-tab-pane label="登录" name="login">
-              <el-form @submit.prevent="handleLogin" class="auth-form">
+              <!-- Password mode -->
+              <el-form v-if="loginMode === 'password'" @submit.prevent="handleLogin" class="auth-form">
                 <el-form-item>
                   <el-input
                     v-model="loginForm.credential"
@@ -49,6 +50,51 @@
                     登 录
                   </el-button>
                 </el-form-item>
+                <p class="mode-toggle">
+                  <el-button link type="primary" @click="loginMode = 'code'">验证码登录</el-button>
+                </p>
+              </el-form>
+
+              <!-- Verification code mode -->
+              <el-form v-else @submit.prevent="handleCodeLogin" class="auth-form">
+                <el-form-item>
+                  <el-input
+                    v-model="codeForm.email"
+                    placeholder="邮箱"
+                    size="large"
+                  >
+                    <template #prefix><el-icon><Message /></el-icon></template>
+                  </el-input>
+                </el-form-item>
+                <el-form-item>
+                  <el-input
+                    v-model="codeForm.code"
+                    placeholder="验证码"
+                    size="large"
+                    @keyup.enter="handleCodeLogin"
+                  >
+                    <template #prefix><el-icon><Key /></el-icon></template>
+                    <template #suffix>
+                      <el-button
+                        link
+                        type="primary"
+                        :disabled="countdown > 0"
+                        @click="sendVerificationCode"
+                        style="font-size:0.85rem"
+                      >
+                        {{ countdown > 0 ? `${countdown}s` : '获取验证码' }}
+                      </el-button>
+                    </template>
+                  </el-input>
+                </el-form-item>
+                <el-form-item>
+                  <el-button type="primary" size="large" @click="handleCodeLogin" :loading="loading" class="submit-btn">
+                    登 录
+                  </el-button>
+                </el-form-item>
+                <p class="mode-toggle">
+                  <el-button link type="primary" @click="loginMode = 'password'">密码登录</el-button>
+                </p>
               </el-form>
             </el-tab-pane>
 
@@ -97,6 +143,7 @@
 import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { sendCode as apiSendCode } from '../api/auth'
 import { ElMessage } from 'element-plus'
 import NavBar from '../components/layout/NavBar.vue'
 
@@ -104,8 +151,11 @@ const auth = useAuthStore()
 const router = useRouter()
 const loading = ref(false)
 const activeTab = ref('login')
+const loginMode = ref('password')
+const countdown = ref(0)
 
 const loginForm = reactive({ credential: '', password: '' })
+const codeForm = reactive({ email: '', code: '' })
 const registerForm = reactive({
   email: '', phone: '', display_name: '', password: '', confirmPassword: '',
 })
@@ -118,6 +168,37 @@ async function handleLogin() {
   loading.value = true
   try {
     await auth.login(loginForm.credential, loginForm.password)
+    ElMessage.success('登录成功！')
+    router.push('/resume-optimizer')
+  } finally {
+    loading.value = false
+  }
+}
+
+async function sendVerificationCode() {
+  if (!codeForm.email) {
+    ElMessage.error('请输入邮箱')
+    return
+  }
+  try {
+    await apiSendCode(codeForm.email)
+    ElMessage.success('验证码已发送，请查收邮件')
+    countdown.value = 60
+    const timer = setInterval(() => {
+      countdown.value--
+      if (countdown.value <= 0) clearInterval(timer)
+    }, 1000)
+  } catch { /* error handled by interceptor */ }
+}
+
+async function handleCodeLogin() {
+  if (!codeForm.email || !codeForm.code) {
+    ElMessage.error('请输入邮箱和验证码')
+    return
+  }
+  loading.value = true
+  try {
+    await auth.loginByCode(codeForm.email, codeForm.code)
     ElMessage.success('登录成功！')
     router.push('/resume-optimizer')
   } finally {
@@ -255,6 +336,11 @@ async function handleRegister() {
   letter-spacing: 0.1em;
 }
 
+.mode-toggle {
+  text-align: right;
+  margin: 0;
+}
+
 @media (max-width: 700px) {
   .login-panel {
     flex-direction: column;
@@ -268,6 +354,25 @@ async function handleRegister() {
   }
   .panel-form {
     padding: 1.5rem;
+  }
+  .main-content {
+    padding: 80px 1rem 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .main-content {
+    padding: 70px 0.75rem 1rem;
+  }
+  .panel-decor {
+    padding: 1.5rem 1rem;
+  }
+  .decor-title { font-size: 1.3rem; }
+  .panel-form {
+    padding: 1.25rem 1rem;
+  }
+  .login-tabs :deep(.el-tabs__item) {
+    font-size: 0.9rem;
   }
 }
 </style>

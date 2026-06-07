@@ -8,7 +8,7 @@
       </h1>
 
       <el-row :gutter="16" class="metric-row">
-        <el-col :span="6" v-for="m in metrics" :key="m.label">
+        <el-col :xs="12" :sm="12" :md="6" v-for="m in metrics" :key="m.label">
           <div class="metric-card card">
             <div class="metric-icon">
               <el-icon :size="20"><component :is="m.icon" /></el-icon>
@@ -20,7 +20,7 @@
       </el-row>
 
       <el-row :gutter="16">
-        <el-col :span="12">
+        <el-col :xs="24" :md="12">
           <div class="chart-card card">
             <h3>
               <el-icon style="margin-right:4px"><Document /></el-icon>
@@ -30,7 +30,7 @@
             <el-empty v-else description="暂无数据" />
           </div>
         </el-col>
-        <el-col :span="12">
+        <el-col :xs="24" :md="12">
           <div class="chart-card card">
             <h3>
               <el-icon style="margin-right:4px"><Aim /></el-icon>
@@ -43,7 +43,7 @@
       </el-row>
 
       <el-row :gutter="16" style="margin-top:1rem">
-        <el-col :span="12">
+        <el-col :xs="24" :md="12">
           <div class="chart-card card">
             <h3>
               <el-icon style="margin-right:4px"><Microphone /></el-icon>
@@ -53,7 +53,7 @@
             <el-empty v-else description="暂无数据" />
           </div>
         </el-col>
-        <el-col :span="12">
+        <el-col :xs="24" :md="12">
           <div class="chart-card card">
             <h3>
               <el-icon style="margin-right:4px"><DataAnalysis /></el-icon>
@@ -271,5 +271,35 @@ watch(dashboard, () => nextTick(renderCharts))
   color: var(--text-primary); margin-bottom: 1rem;
   font-size: 0.95rem; font-weight: 700;
   display: flex; align-items: center;
+}
+
+@media (max-width: 768px) {
+  .main-content { padding: 70px 1rem 1.5rem; }
+  .page-title { font-size: 1.4rem; }
+
+  .metric-card { padding: 1rem; }
+  .metric-value { font-size: 1.4rem; }
+
+  .chart-card { padding: 1rem; }
+  .chart-card h3 { font-size: 0.88rem; }
+
+  /* Make form inline stack on mobile */
+  .chart-card :deep(.el-form--inline) {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .chart-card :deep(.el-form--inline .el-form-item) {
+    margin-right: 0;
+  }
+  .chart-card :deep(.el-form--inline .el-input),
+  .chart-card :deep(.el-form--inline .el-select) {
+    width: 100% !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .metric-value { font-size: 1.1rem; }
+  .metric-label { font-size: 0.7rem; }
 }
 </style>

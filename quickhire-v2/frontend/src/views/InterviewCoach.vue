@@ -342,4 +342,38 @@ function dimColor(score) {
   border-radius: var(--radius-md); font-weight: 600;
   padding: 12px 28px;
 }
+
+@media (max-width: 768px) {
+  .main-content { padding: 70px 1rem 1.5rem; }
+  .page-title { font-size: 1.4rem; }
+
+  .setup-card, .question-area, .feedback-area, .finished-area {
+    padding: 1.5rem 1rem;
+  }
+
+  .setup-form :deep(.el-form-item) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .setup-form :deep(.el-form-item__label) {
+    margin-bottom: 0.25rem;
+  }
+  .setup-form :deep(.el-select) { width: 100% !important; }
+
+  .start-btn, .submit-btn, .nav-btn, .restart-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .feedback-actions { flex-direction: column; }
+  .feedback-actions .nav-btn { width: 100%; justify-content: center; }
+
+  .dim-row { flex-direction: column; gap: 0.25rem; align-items: stretch; }
+  .dim-label { width: auto; }
+
+  .score-section { justify-content: center; }
+
+  .question-card-inner { padding: 1rem; }
+  .question-card-inner h3 { font-size: 1rem; }
+}
 </style>

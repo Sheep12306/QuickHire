@@ -11,3 +11,11 @@ export function register(data) {
 export function getMe() {
   return api.get('/auth/me')
 }
+
+export function sendCode(email) {
+  return api.post('/auth/send-code', { email })
+}
+
+export function verifyCodeLogin(email, code) {
+  return api.post('/auth/verify-code-login', { email, code })
+}

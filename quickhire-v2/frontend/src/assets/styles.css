@@ -288,6 +288,37 @@ html, body {
   border-radius: 4px;
 }
 
+/* ── Mobile responsive base ──────────────────────────── */
+img, svg {
+  max-width: 100%;
+  height: auto;
+}
+
+@media (max-width: 768px) {
+  /* Allow horizontal scroll for wide tables/code blocks */
+  .el-table {
+    display: block;
+    overflow-x: auto;
+  }
+
+  pre, code {
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  /* Dialogs full-width on mobile */
+  .el-dialog {
+    width: 90vw !important;
+    max-height: 80vh;
+    margin: 0 auto;
+  }
+
+  .el-dialog__body {
+    max-height: calc(80vh - 120px);
+    overflow-y: auto;
+  }
+}
+
 /* ── Utility animation: fade up ─────────────────────── */
 @keyframes fadeUp {
   from {

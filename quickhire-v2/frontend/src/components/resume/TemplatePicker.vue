@@ -355,4 +355,27 @@ async function handleExport() {
   line-height: 1.4; margin-bottom: 1px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+
+@media (max-width: 768px) {
+  .tp-container { max-height: 55vh; gap: 1rem; }
+
+  .tp-grid { gap: 0.5rem; }
+  .tp-card { flex: 0 0 100px; }
+  .tp-thumb { height: 80px; }
+
+  .tp-section h4 { font-size: 0.82rem; }
+
+  .photo-drop { width: 64px; height: 64px; }
+  .photo-preview-wrap { width: 64px; height: 64px; }
+
+  .tp-preview { padding: 0.5rem; }
+  .preview-page { padding: 0.5rem; }
+
+  /* Make radio group stack */
+  .page-limit-row :deep(.el-radio-group) {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+}
 </style>
