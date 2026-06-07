@@ -31,6 +31,7 @@ pip install -r requirements.txt
 
 echo "=== Building frontend ==="
 cd "$FRONTEND_DIR"
+rm -rf dist
 npm ci --legacy-peer-deps
 npm run build
 
