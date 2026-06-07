@@ -3,6 +3,9 @@ import vue from '@vitejs/plugin-vue'
 
 export default defineConfig({
   plugins: [vue()],
+  build: {
+    emptyOutDir: false,
+  },
   server: {
     port: 5173,
     proxy: {
