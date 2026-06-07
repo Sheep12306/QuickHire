@@ -41,9 +41,19 @@ sudo rm -rf "$NGINX_STATIC"/*
 sudo cp -r dist/* "$NGINX_STATIC"/
 
 echo "=== Restarting backend ==="
-sudo systemctl restart quickhire
+if systemctl is-enabled quickhire &>/dev/null; then
+    sudo systemctl restart quickhire
+    echo "Backend restarted"
+else
+    echo "WARNING: quickhire service not registered. Run server-init.sh first."
+fi
 
 echo "=== Reloading nginx ==="
-sudo nginx -s reload
+if systemctl is-active nginx &>/dev/null; then
+    sudo nginx -s reload
+    echo "Nginx reloaded"
+else
+    echo "WARNING: nginx not running. Run server-init.sh first."
+fi
 
 echo "=== Deploy complete ==="
