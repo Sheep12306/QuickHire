@@ -19,7 +19,7 @@ router = APIRouter()
 
 @router.get("/preferences")
 def get_preferences(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_allow_pw_change),
     db: Session = Depends(get_db),
 ):
     return UserSettingsService.get_preferences(db, current_user.id)
@@ -127,7 +127,7 @@ def save_api_config(
 
 @router.get("/usage")
 def get_usage(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_allow_pw_change),
     db: Session = Depends(get_db),
 ):
     from services.user_settings_service import UserSettingsService
@@ -139,7 +139,7 @@ def get_usage(
 
 @router.get("/api-config")
 def get_api_config(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_allow_pw_change),
     db: Session = Depends(get_db),
 ):
     prefs = UserSettingsService.get_preferences(db, current_user.id)

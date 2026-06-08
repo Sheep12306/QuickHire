@@ -44,6 +44,7 @@ class UserResponse(BaseModel):
     target_city: str | None = None
     role: str = "user"
     is_active: bool = True
+    must_change_password: bool = False
     banned_until: datetime | None = None
     ban_reason: str | None = None
     membership_type: str = "free"

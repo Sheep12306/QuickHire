@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from schemas import RegisterRequest, LoginRequest, TokenResponse, UserResponse, SendCodeRequest, VerifyCodeLoginRequest
-from dependencies import get_db, get_current_user
+from dependencies import get_db, get_current_user, get_current_user_allow_pw_change
 from services.auth_service import AuthService, AuthError
 from services.email_service import EmailService, EmailError
 from security import create_access_token
@@ -84,5 +84,5 @@ def verify_code_login(req: VerifyCodeLoginRequest, db: Session = Depends(get_db)
 
 
 @router.get("/me", response_model=UserResponse)
-def get_me(current_user: User = Depends(get_current_user)):
+def get_me(current_user: User = Depends(get_current_user_allow_pw_change)):
     return UserResponse.model_validate(current_user)
