@@ -1,9 +1,6 @@
 <template>
   <div>
-    <div class="page-header" style="display:flex;align-items:center;justify-content:space-between">
-      <h2>系统设置</h2>
-      <el-button type="primary" @click="$router.push('/admin/dashboard')" :icon="ArrowLeft">返回仪表盘</el-button>
-    </div>
+    <div class="page-header"><h2>系统设置</h2></div>
 
     <el-tabs v-model="activeTab">
       <!-- Change Password -->
@@ -75,13 +72,14 @@
               <el-input v-model="apiKeyForm.api_base_url" placeholder="https://api.deepseek.com/v1/chat/completions" />
             </el-form-item>
             <el-form-item label="模型">
-              <el-select v-model="apiKeyForm.api_model" placeholder="选择模型" style="width:100%">
+              <el-select v-model="apiKeyForm.api_model" placeholder="选择或输入模型" style="width:100%" filterable allow-create>
                 <el-option label="DeepSeek V3" value="deepseek-chat" />
                 <el-option label="Qwen Plus" value="qwen-plus" />
                 <el-option label="Qwen Max" value="qwen-max" />
                 <el-option label="Kimi (Moonshot)" value="moonshot-v1-8k" />
                 <el-option label="GLM-4" value="glm-4" />
               </el-select>
+              <span style="font-size:12px;color:var(--el-text-color-secondary);margin-top:4px">可直接输入自定义模型名称</span>
             </el-form-item>
           </el-form>
 
@@ -149,7 +147,6 @@
 import { ref, reactive, onMounted } from 'vue'
 import { getSystemConfig, updateSystemConfig, getRoles, getIpWhitelist, updateIpWhitelist, getSystemAuditLog, getSystemApiConfig, saveSystemApiConfig, testSystemApi } from '../../api/admin/system'
 import { ElMessage } from 'element-plus'
-import { ArrowLeft } from '@element-plus/icons-vue'
 import api from '../../api'
 
 const activeTab = ref('general')

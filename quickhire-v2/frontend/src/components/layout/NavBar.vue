@@ -40,6 +40,10 @@
               {{ (auth.user?.display_name || 'U')[0].toUpperCase() }}
             </el-avatar>
             <span class="user-name">{{ auth.user?.display_name }}</span>
+            <router-link v-if="auth.isAdmin" to="/admin/dashboard" class="nav-link admin-link">
+              <el-icon class="nav-icon"><Monitor /></el-icon>
+              <span>后台</span>
+            </router-link>
             <router-link to="/profile" class="nav-link">
               <el-icon class="nav-icon"><Setting /></el-icon>
               <span>设置</span>
@@ -93,6 +97,10 @@
           <div class="mobile-user-name">{{ auth.user?.display_name }}</div>
         </div>
       </div>
+      <router-link v-if="auth.isAdmin" to="/admin/dashboard" class="mobile-nav-link" @click="mobileMenuOpen = false">
+        <el-icon class="nav-icon"><Monitor /></el-icon>
+        <span>后台管理</span>
+      </router-link>
       <router-link to="/profile" class="mobile-nav-link" @click="mobileMenuOpen = false">
         <el-icon class="nav-icon"><Setting /></el-icon>
         <span>设置</span>
