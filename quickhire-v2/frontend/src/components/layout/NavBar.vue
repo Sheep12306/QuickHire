@@ -36,21 +36,30 @@
       <div class="topnav-right">
         <div class="topnav-actions desktop-only">
           <template v-if="auth.isLoggedIn">
-            <el-avatar :size="32" class="user-avatar">
-              {{ (auth.user?.display_name || 'U')[0].toUpperCase() }}
-            </el-avatar>
-            <span class="user-name">{{ auth.user?.display_name }}</span>
-            <router-link v-if="auth.isAdmin" to="/admin/dashboard" class="nav-link admin-link">
-              <el-icon class="nav-icon"><Monitor /></el-icon>
-              <span>后台</span>
-            </router-link>
-            <router-link to="/profile" class="nav-link">
-              <el-icon class="nav-icon"><Setting /></el-icon>
-              <span>设置</span>
-            </router-link>
-            <el-button text type="danger" size="small" @click="handleLogout" class="logout-btn">
-              退出
-            </el-button>
+            <el-dropdown trigger="click">
+              <div class="user-dropdown-trigger">
+                <el-avatar :size="32" class="user-avatar">
+                  {{ (auth.user?.display_name || 'U')[0].toUpperCase() }}
+                </el-avatar>
+                <span class="user-name">{{ auth.user?.display_name }}</span>
+              </div>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item v-if="auth.isAdmin" @click="$router.push('/admin/dashboard')">
+                    <el-icon><Monitor /></el-icon>
+                    <span style="margin-left:6px">后台管理</span>
+                  </el-dropdown-item>
+                  <el-dropdown-item @click="$router.push('/profile')">
+                    <el-icon><Setting /></el-icon>
+                    <span style="margin-left:6px">个人设置</span>
+                  </el-dropdown-item>
+                  <el-dropdown-item divided @click="handleLogout">
+                    <el-icon><SwitchButton /></el-icon>
+                    <span style="margin-left:6px">退出登录</span>
+                  </el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
           </template>
           <template v-else>
             <el-button class="btn-login" @click="$router.push('/login')">
@@ -253,6 +262,12 @@ async function handleShare() {
   align-items: center;
   gap: 0.5rem;
 }
+.user-dropdown-trigger {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
 .user-avatar {
   background: linear-gradient(135deg, var(--green-500), var(--green-600));
   color: #fff;
@@ -277,8 +292,6 @@ async function handleShare() {
   border-radius: var(--radius-sm);
   font-weight: 600;
 }
-.logout-btn { font-weight: 500; }
-
 /* ── Share button ─────────────────────────── */
 .share-btn {
   display: flex;

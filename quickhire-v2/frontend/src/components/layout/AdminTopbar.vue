@@ -12,11 +12,6 @@
 
     <div class="spacer" />
 
-    <!-- Theme toggle -->
-    <el-tooltip :content="theme.isDark ? '切换浅色模式' : '切换深色模式'" placement="bottom">
-      <el-button :icon="theme.isDark ? Sunny : Moon" circle @click="theme.toggle" text />
-    </el-tooltip>
-
     <!-- Back to main site -->
     <el-tooltip content="返回主站" placement="bottom">
       <el-button icon="HomeFilled" circle @click="$router.push('/')" text />
@@ -43,8 +38,7 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
-import { useThemeStore } from '../../stores/theme'
-import { Fold, Expand, Sunny, Moon } from '@element-plus/icons-vue'
+import { Fold, Expand } from '@element-plus/icons-vue'
 
 defineEmits(['toggleSidebar'])
 const props = defineProps({ collapsed: { type: Boolean, default: false } })
@@ -52,7 +46,6 @@ const props = defineProps({ collapsed: { type: Boolean, default: false } })
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
-const theme = useThemeStore()
 
 const currentTitle = computed(() => route.meta.title || '')
 
