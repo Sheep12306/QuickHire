@@ -1,12 +1,25 @@
 from datetime import date
 from sqlalchemy.orm import Session
-from models import DailyUsage
+from models import DailyUsage, SystemConfig
 
-DAILY_FREE_LIMIT = 2
+FALLBACK_LIMIT = 2
 
 
 class UsageError(Exception):
     pass
+
+
+def _get_free_config(db: Session) -> tuple[bool, int]:
+    """Read free usage config from system_configs. Returns (is_unlimited, daily_limit)."""
+    configs = (
+        db.query(SystemConfig)
+        .filter(SystemConfig.key.in_(["free_usage_unlimited", "free_usage_daily_limit"]))
+        .all()
+    )
+    cfg_map = {c.key: c.value for c in configs}
+    unlimited = cfg_map.get("free_usage_unlimited", "false") == "true"
+    limit = int(cfg_map.get("free_usage_daily_limit", str(FALLBACK_LIMIT)))
+    return unlimited, limit
 
 
 class UsageService:
@@ -36,19 +49,23 @@ class UsageService:
         if has_own_api_key:
             return  # unlimited
 
+        unlimited, daily_limit = _get_free_config(db)
+        if unlimited:
+            return  # admin set unlimited mode
+
         today = UsageService._get_today(db, user_id)
 
         if action == "optimize":
-            if today.optimize_count >= DAILY_FREE_LIMIT:
+            if today.optimize_count >= daily_limit:
                 raise UsageError(
-                    f"每日免费{action_text(action)}次数已用完（{DAILY_FREE_LIMIT}次/天），"
+                    f"每日免费{action_text(action)}次数已用完（{daily_limit}次/天），"
                     "请明天再试或配置自己的 API Key 解除限制"
                 )
             today.optimize_count += 1
         elif action == "diagnose":
-            if today.diagnose_count >= DAILY_FREE_LIMIT:
+            if today.diagnose_count >= daily_limit:
                 raise UsageError(
-                    f"每日免费{action_text(action)}次数已用完（{DAILY_FREE_LIMIT}次/天），"
+                    f"每日免费{action_text(action)}次数已用完（{daily_limit}次/天），"
                     "请明天再试或配置自己的 API Key 解除限制"
                 )
             today.diagnose_count += 1
@@ -67,12 +84,20 @@ class UsageService:
                 "optimize_remaining": -1,
                 "diagnose_remaining": -1,
             }
+        unlimited, daily_limit = _get_free_config(db)
+        if unlimited:
+            return {
+                "unlimited": True,
+                "optimize_remaining": -1,
+                "diagnose_remaining": -1,
+                "daily_limit": 0,
+            }
         today = UsageService._get_today(db, user_id)
         return {
             "unlimited": False,
-            "optimize_remaining": max(0, DAILY_FREE_LIMIT - today.optimize_count),
-            "diagnose_remaining": max(0, DAILY_FREE_LIMIT - today.diagnose_count),
-            "daily_limit": DAILY_FREE_LIMIT,
+            "optimize_remaining": max(0, daily_limit - today.optimize_count),
+            "diagnose_remaining": max(0, daily_limit - today.diagnose_count),
+            "daily_limit": daily_limit,
         }
 
 

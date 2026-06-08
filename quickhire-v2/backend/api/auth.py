@@ -23,7 +23,7 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
     except AuthError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
-    token = create_access_token({"sub": str(user.id)})
+    token = create_access_token({"sub": str(user.id), "role": user.role})
     return TokenResponse(
         access_token=token,
         user=UserResponse.model_validate(user),
@@ -37,7 +37,7 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
     except AuthError as e:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
 
-    token = create_access_token({"sub": str(user.id)})
+    token = create_access_token({"sub": str(user.id), "role": user.role})
     return TokenResponse(
         access_token=token,
         user=UserResponse.model_validate(user),
@@ -76,7 +76,7 @@ def verify_code_login(req: VerifyCodeLoginRequest, db: Session = Depends(get_db)
     if not user.is_active:
         raise HTTPException(status_code=403, detail="账号已被停用")
 
-    token = create_access_token({"sub": str(user.id)})
+    token = create_access_token({"sub": str(user.id), "role": user.role})
     return TokenResponse(
         access_token=token,
         user=UserResponse.model_validate(user),

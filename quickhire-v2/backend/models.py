@@ -15,6 +15,11 @@ class User(Base):
     city = Column(String(100), nullable=True)
     target_city = Column(String(100), nullable=True)
     is_active = Column(Boolean, default=True)
+    role = Column(String(20), default="user")
+    banned_until = Column(DateTime, nullable=True)
+    ban_reason = Column(String(500), nullable=True)
+    membership_type = Column(String(20), default="free")
+    membership_expires_at = Column(DateTime, nullable=True)
     last_login_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
@@ -23,6 +28,8 @@ class User(Base):
     question_banks = relationship("InterviewQuestionBank", back_populates="user", lazy="dynamic")
     answers = relationship("InterviewAnswer", back_populates="user", lazy="dynamic")
     applications = relationship("JobApplication", back_populates="user", lazy="dynamic")
+    notes = relationship("AdminUserNote", foreign_keys="AdminUserNote.user_id", back_populates="user", lazy="dynamic")
+    orders = relationship("Order", foreign_keys="Order.user_id", back_populates="user", lazy="dynamic")
 
 
 class ResumeVersion(Base):
@@ -152,3 +159,147 @@ class QuestionFavorite(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     question_id = Column(Integer, ForeignKey("practice_questions.id"), nullable=False)
     created_at = Column(DateTime, server_default=func.now())
+
+
+# ── Admin models ────────────────────────────────────────────────
+
+class AdminAuditLog(Base):
+    __tablename__ = "admin_audit_logs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    admin_user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    action = Column(String(100), nullable=False)
+    target_type = Column(String(50), nullable=True)
+    target_id = Column(Integer, nullable=True)
+    detail = Column(Text, nullable=True)
+    ip_address = Column(String(45), nullable=True)
+    created_at = Column(DateTime, server_default=func.now())
+
+    admin = relationship("User", foreign_keys=[admin_user_id])
+
+
+class ApiCallLog(Base):
+    __tablename__ = "api_call_logs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    endpoint = Column(String(200), nullable=True)
+    model = Column(String(50), nullable=True)
+    prompt_tokens = Column(Integer, default=0)
+    completion_tokens = Column(Integer, default=0)
+    latency_ms = Column(Integer, nullable=True)
+    status = Column(String(20), default="success")
+    error_message = Column(Text, nullable=True)
+    cost = Column(Float, default=0.0)
+    created_at = Column(DateTime, server_default=func.now())
+
+
+class SystemConfig(Base):
+    __tablename__ = "system_configs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    key = Column(String(100), unique=True, nullable=False)
+    value = Column(Text, nullable=True)
+    description = Column(String(255), nullable=True)
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+
+class AdminUserNote(Base):
+    __tablename__ = "admin_user_notes"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    admin_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    note = Column(Text, nullable=False)
+    created_at = Column(DateTime, server_default=func.now())
+
+    user = relationship("User", foreign_keys=[user_id], back_populates="notes")
+    admin = relationship("User", foreign_keys=[admin_id])
+
+
+class ResumeTemplate(Base):
+    __tablename__ = "resume_templates"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(100), nullable=False)
+    description = Column(Text, nullable=True)
+    template_content = Column(Text, nullable=True)
+    thumbnail_url = Column(String(500), nullable=True)
+    category = Column(String(50), nullable=True)
+    is_active = Column(Boolean, default=True)
+    sort_order = Column(Integer, default=0)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+
+class PromptTemplate(Base):
+    __tablename__ = "prompt_templates"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(100), nullable=False)
+    template_type = Column(String(50), nullable=False)
+    content = Column(Text, nullable=False)
+    variables = Column(Text, nullable=True)
+    is_default = Column(Boolean, default=False)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+
+class Package(Base):
+    __tablename__ = "packages"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(100), nullable=False)
+    description = Column(Text, nullable=True)
+    price = Column(Float, nullable=False, default=0.0)
+    duration_days = Column(Integer, nullable=False, default=30)
+    optimize_limit = Column(Integer, default=10)
+    diagnose_limit = Column(Integer, default=10)
+    is_active = Column(Boolean, default=True)
+    sort_order = Column(Integer, default=0)
+    created_at = Column(DateTime, server_default=func.now())
+
+
+class Order(Base):
+    __tablename__ = "orders"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    package_id = Column(Integer, ForeignKey("packages.id"), nullable=False)
+    amount = Column(Float, nullable=False)
+    status = Column(String(20), default="pending")
+    payment_method = Column(String(50), nullable=True)
+    transaction_id = Column(String(100), nullable=True)
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    user = relationship("User", foreign_keys=[user_id], back_populates="orders")
+
+
+class Announcement(Base):
+    __tablename__ = "announcements"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    title = Column(String(200), nullable=False)
+    content = Column(Text, nullable=False)
+    priority = Column(String(20), default="normal")
+    is_published = Column(Boolean, default=False)
+    published_at = Column(DateTime, nullable=True)
+    expires_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, server_default=func.now())
+
+
+class HelpArticle(Base):
+    __tablename__ = "help_articles"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    title = Column(String(200), nullable=False)
+    content = Column(Text, nullable=False)
+    category = Column(String(50), nullable=True)
+    tags = Column(String(200), nullable=True)
+    sort_order = Column(Integer, default=0)
+    is_published = Column(Boolean, default=False)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())

@@ -41,6 +41,9 @@ app.include_router(analytics_router, prefix="/api/analytics", tags=["Analytics"]
 app.include_router(profile_router, prefix="/api/profile", tags=["Profile"])
 app.include_router(practice_router, prefix="/api/practice", tags=["Practice"])
 
+from api.admin import admin_router
+app.include_router(admin_router, prefix="/api/admin", tags=["Admin"])
+
 
 @app.get("/api/health")
 def health():

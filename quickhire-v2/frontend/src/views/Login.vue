@@ -141,7 +141,7 @@
 
 <script setup>
 import { reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { sendCode as apiSendCode } from '../api/auth'
 import { ElMessage } from 'element-plus'
@@ -149,6 +149,7 @@ import NavBar from '../components/layout/NavBar.vue'
 
 const auth = useAuthStore()
 const router = useRouter()
+const route = useRoute()
 const loading = ref(false)
 const activeTab = ref('login')
 const loginMode = ref('password')
@@ -169,7 +170,8 @@ async function handleLogin() {
   try {
     await auth.login(loginForm.credential, loginForm.password)
     ElMessage.success('登录成功！')
-    router.push('/resume-optimizer')
+    const redirect = route.query.redirect
+    router.push(redirect || (auth.isAdmin ? '/admin/dashboard' : '/resume-optimizer'))
   } finally {
     loading.value = false
   }
@@ -200,7 +202,8 @@ async function handleCodeLogin() {
   try {
     await auth.loginByCode(codeForm.email, codeForm.code)
     ElMessage.success('登录成功！')
-    router.push('/resume-optimizer')
+    const redirect2 = route.query.redirect
+    router.push(redirect2 || (auth.isAdmin ? '/admin/dashboard' : '/resume-optimizer'))
   } finally {
     loading.value = false
   }
@@ -224,7 +227,8 @@ async function handleRegister() {
       display_name: registerForm.display_name.trim(),
     })
     ElMessage.success('注册成功！')
-    router.push('/resume-optimizer')
+    const redirect3 = route.query.redirect
+    router.push(redirect3 || '/resume-optimizer')
   } finally {
     loading.value = false
   }

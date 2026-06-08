@@ -154,21 +154,57 @@ def call_qwen_api_with_retry(
     api_model: Optional[str] = None,
     api_base_url: Optional[str] = None,
     max_retries: Optional[int] = None,
+    user_id: Optional[int] = None,
+    endpoint: str = "",
 ) -> str:
     retries = max_retries or API_MAX_RETRIES
+    model = api_model or API_MODEL
+    start_time = time.time()
 
     for attempt in range(retries):
         try:
-            return call_qwen_api(
+            result = call_qwen_api(
                 prompt,
                 api_key=api_key,
                 api_model=api_model,
                 api_base_url=api_base_url,
             )
-        except APIError as e:
-            if attempt == retries - 1:
-                raise
-            if "认证失败" in str(e) or "访问被拒绝" in str(e):
+            # Log success
+            latency_ms = int((time.time() - start_time) * 1000)
+            try:
+                from services.admin_service import log_api_call
+                # Estimate tokens (rough: ~4 chars per token for Chinese)
+                estimated_prompt_tokens = len(prompt) // 2
+                estimated_completion_tokens = len(result) // 2
+                log_api_call(
+                    user_id=user_id,
+                    endpoint=endpoint,
+                    model=model,
+                    prompt_tokens=estimated_prompt_tokens,
+                    completion_tokens=estimated_completion_tokens,
+                    latency_ms=latency_ms,
+                    status="success",
+                )
+            except Exception:
+                pass  # never let logging break the main flow
+            return result
+        except (APIError, ValidationError) as e:
+            is_auth_error = "认证失败" in str(e) or "访问被拒绝" in str(e)
+            if attempt == retries - 1 or is_auth_error:
+                # Log failure
+                latency_ms = int((time.time() - start_time) * 1000)
+                try:
+                    from services.admin_service import log_api_call
+                    log_api_call(
+                        user_id=user_id,
+                        endpoint=endpoint,
+                        model=model,
+                        latency_ms=latency_ms,
+                        status="error",
+                        error_message=str(e)[:500],
+                    )
+                except Exception:
+                    pass
                 raise
             wait_time = 2 ** attempt
             time.sleep(wait_time)

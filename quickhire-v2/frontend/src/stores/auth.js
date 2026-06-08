@@ -7,6 +7,11 @@ export const useAuthStore = defineStore('auth', () => {
   const token = ref(localStorage.getItem('token') || '')
 
   const isLoggedIn = computed(() => !!token.value && !!user.value)
+  const isAdmin = computed(() => {
+    const role = user.value?.role || 'user'
+    return ['super_admin', 'operator', 'viewer'].includes(role)
+  })
+  const isSuperAdmin = computed(() => user.value?.role === 'super_admin')
 
   async function initialize() {
     if (token.value) {
@@ -49,5 +54,5 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem('token')
   }
 
-  return { user, token, isLoggedIn, initialize, login, loginByCode, register, logout }
+  return { user, token, isLoggedIn, isAdmin, isSuperAdmin, initialize, login, loginByCode, register, logout }
 })

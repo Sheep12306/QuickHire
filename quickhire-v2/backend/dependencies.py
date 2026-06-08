@@ -43,3 +43,20 @@ def get_optional_user(
     if credentials is None:
         return None
     return get_current_user(credentials, db)
+
+
+def require_admin(roles: list[str] | None = None):
+    """Dependency factory: enforce admin role access.
+
+    Usage:
+        require_admin()               # any admin role
+        require_admin(["super_admin"]) # super_admin only
+    """
+    def checker(current_user: User = Depends(get_current_user)):
+        admin_roles = {"super_admin", "operator", "viewer"}
+        if current_user.role not in admin_roles:
+            raise HTTPException(status_code=403, detail="需要管理员权限")
+        if roles is not None and current_user.role not in roles:
+            raise HTTPException(status_code=403, detail="权限不足")
+        return current_user
+    return checker
