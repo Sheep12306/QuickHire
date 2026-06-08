@@ -39,6 +39,7 @@ def init_db():
             ("ban_reason", "VARCHAR(500)"),
             ("membership_type", "VARCHAR(20) DEFAULT 'free'"),
             ("membership_expires_at", "DATETIME"),
+            ("must_change_password", "BOOLEAN DEFAULT 0"),
         ]:
             try:
                 conn.exec_driver_sql(f"ALTER TABLE users ADD COLUMN {col} {dtype}")
@@ -54,8 +55,8 @@ def init_db():
                 from security import hash_password
                 pwd = hash_password("admin123")
                 conn.exec_driver_sql(
-                    f"INSERT INTO users (email, password_hash, display_name, role, is_active) "
-                    f"VALUES ('admin@quickhire.local', '{pwd}', '超级管理员', 'super_admin', 1)"
+                    f"INSERT INTO users (email, password_hash, display_name, role, is_active, must_change_password) "
+                    f"VALUES ('admin@quickhire.local', '{pwd}', '超级管理员', 'super_admin', 1, 1)"
                 )
         except Exception:
             pass  # table might not exist yet on first run

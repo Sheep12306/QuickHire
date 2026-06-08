@@ -21,9 +21,12 @@ JWT_SECRET = os.getenv("JWT_SECRET", "quickhire-dev-secret-change-in-production"
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRE_MINUTES = int(os.getenv("SESSION_EXPIRY_HOURS", "24")) * 60
 
+# ── Encryption ───────────────────────────────────────────────
+ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY", "")
+
 # ── Auth ──────────────────────────────────────────────────────
 BCRYPT_ROUNDS = int(os.getenv("BCRYPT_ROUNDS", "12"))
-MIN_PASSWORD_LENGTH = int(os.getenv("MIN_PASSWORD_LENGTH", "6"))
+MIN_PASSWORD_LENGTH = int(os.getenv("MIN_PASSWORD_LENGTH", "8"))
 
 # ── CORS ──────────────────────────────────────────────────────
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",")

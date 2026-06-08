@@ -15,6 +15,7 @@ class User(Base):
     city = Column(String(100), nullable=True)
     target_city = Column(String(100), nullable=True)
     is_active = Column(Boolean, default=True)
+    must_change_password = Column(Boolean, default=False)
     role = Column(String(20), default="user")
     banned_until = Column(DateTime, nullable=True)
     ban_reason = Column(String(500), nullable=True)

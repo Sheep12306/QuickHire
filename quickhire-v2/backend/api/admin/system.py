@@ -3,8 +3,11 @@ from sqlalchemy.orm import Session
 from dependencies import get_db, require_admin
 from models import User, SystemConfig, AdminAuditLog
 from schemas import (
-    AdminConfigItem, IpWhitelistRequest, RolePermission, MessageResponse,
+    AdminConfigItem, AdminApiConfigRequest, IpWhitelistRequest,
+    RolePermission, MessageResponse,
 )
+from utils.encryption import encrypt, decrypt, mask_key
+from utils.api_client import test_api_connection
 
 router = APIRouter()
 
@@ -140,3 +143,89 @@ def get_audit_log(
     } for log in logs]
 
     return {"total": total, "page": page, "size": size, "items": items}
+
+
+# ── System API Key Config ──────────────────────────────────────
+
+SYSTEM_API_KEYS = ("system_api_key", "system_api_model", "system_api_base_url")
+
+
+@router.get("/api-config")
+def get_system_api_config(
+    db: Session = Depends(get_db),
+    _current_user: User = Depends(require_admin(["super_admin"])),
+):
+    """Return the system-wide API key config (key is masked)."""
+    cfgs = db.query(SystemConfig).filter(SystemConfig.key.in_(SYSTEM_API_KEYS)).all()
+    result = {}
+    for c in cfgs:
+        if c.key == "system_api_key":
+            decrypted = decrypt(c.value) if c.value else ""
+            result["api_key"] = mask_key(decrypted) if decrypted else ""
+            result["api_key_configured"] = bool(decrypted)
+        elif c.key == "system_api_model":
+            result["api_model"] = c.value or ""
+        elif c.key == "system_api_base_url":
+            result["api_base_url"] = c.value or ""
+    result.setdefault("api_key", "")
+    result.setdefault("api_key_configured", False)
+    result.setdefault("api_model", "")
+    result.setdefault("api_base_url", "")
+    return result
+
+
+@router.put("/api-config")
+def save_system_api_config(
+    req: AdminApiConfigRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin(["super_admin"])),
+):
+    """Save system-wide API key config. Key is encrypted before storage."""
+    updates = []
+    if req.api_model:
+        updates.append(("system_api_model", req.api_model, "系统默认API模型"))
+    if req.api_base_url:
+        updates.append(("system_api_base_url", req.api_base_url, "系统默认API地址"))
+
+    # Only update api_key if a non-masked value is provided
+    if req.api_key and not req.api_key.endswith("...") and len(req.api_key) > 8:
+        updates.append(("system_api_key", encrypt(req.api_key), "系统默认API密钥（加密存储）"))
+
+    for key, value, desc in updates:
+        cfg = db.query(SystemConfig).filter(SystemConfig.key == key).first()
+        if cfg:
+            cfg.value = value
+            cfg.description = desc
+        else:
+            db.add(SystemConfig(key=key, value=value, description=desc))
+
+    db.add(AdminAuditLog(admin_user_id=current_user.id, action="update_system_api_config",
+                         target_type="system_config", detail="更新系统API配置"))
+    db.commit()
+    return MessageResponse(message="系统API配置已保存")
+
+
+@router.post("/test-api")
+def test_system_api(
+    req: AdminApiConfigRequest,
+    db: Session = Depends(get_db),
+    _current_user: User = Depends(require_admin(["super_admin"])),
+):
+    """Test system API connection using provided or stored credentials."""
+    if req.api_key and not req.api_key.endswith("...") and len(req.api_key) > 8:
+        key = req.api_key
+    else:
+        cfg = db.query(SystemConfig).filter(SystemConfig.key == "system_api_key").first()
+        key = decrypt(cfg.value) if cfg and cfg.value else ""
+
+    model = req.api_model
+    if not model:
+        cfg = db.query(SystemConfig).filter(SystemConfig.key == "system_api_model").first()
+        model = cfg.value if cfg else ""
+
+    url = req.api_base_url
+    if not url:
+        cfg = db.query(SystemConfig).filter(SystemConfig.key == "system_api_base_url").first()
+        url = cfg.value if cfg else ""
+
+    return test_api_connection(api_key=key, api_model=model, api_base_url=url)

@@ -35,6 +35,41 @@
         </div>
       </el-tab-pane>
 
+      <!-- API Key Config -->
+      <el-tab-pane label="API 密钥" name="apikey">
+        <div class="detail-card" v-loading="apiKeyLoading">
+          <h3>系统 API 密钥配置</h3>
+          <p style="color:var(--el-text-color-secondary);margin-bottom:20px">配置系统默认的 API 密钥。当用户未在个人资料中配置自有 API Key 时，系统将使用此密钥调用 AI 服务。密钥加密存储，不会明文显示。</p>
+
+          <el-form label-width="140px">
+            <el-form-item label="API 密钥">
+              <el-input v-model="apiKeyForm.api_key" type="password" show-password placeholder="输入 API Key（已保存的密钥将显示为遮蔽格式）" />
+              <span v-if="apiKeyConfigured" style="margin-left:8px;color:var(--el-color-success)">已配置</span>
+              <span v-else style="margin-left:8px;color:var(--el-color-warning)">未配置</span>
+            </el-form-item>
+            <el-form-item label="API 地址">
+              <el-input v-model="apiKeyForm.api_base_url" placeholder="https://api.deepseek.com/v1/chat/completions" />
+            </el-form-item>
+            <el-form-item label="模型">
+              <el-select v-model="apiKeyForm.api_model" placeholder="选择模型" style="width:100%">
+                <el-option label="DeepSeek V3" value="deepseek-chat" />
+                <el-option label="Qwen Plus" value="qwen-plus" />
+                <el-option label="Qwen Max" value="qwen-max" />
+                <el-option label="Kimi (Moonshot)" value="moonshot-v1-8k" />
+                <el-option label="GLM-4" value="glm-4" />
+              </el-select>
+            </el-form-item>
+          </el-form>
+
+          <el-button type="primary" @click="saveApiKeyConfig" style="margin-top:12px" :loading="apiKeySaving">保存密钥配置</el-button>
+          <el-button @click="testApiKeyConfig" style="margin-top:12px;margin-left:8px" :loading="apiKeyTesting">测试连接</el-button>
+
+          <div v-if="apiTestResult !== null" style="margin-top:12px">
+            <el-alert :title="apiTestResult.message" :type="apiTestResult.success ? 'success' : 'error'" :closable="false" />
+          </div>
+        </div>
+      </el-tab-pane>
+
       <!-- General Config -->
       <el-tab-pane label="通用配置" name="general">
         <div class="detail-card" v-loading="configLoading">
@@ -88,7 +123,7 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import { getSystemConfig, updateSystemConfig, getRoles, getIpWhitelist, updateIpWhitelist, getSystemAuditLog } from '../../api/admin/system'
+import { getSystemConfig, updateSystemConfig, getRoles, getIpWhitelist, updateIpWhitelist, getSystemAuditLog, getSystemApiConfig, saveSystemApiConfig, testSystemApi } from '../../api/admin/system'
 import { ElMessage } from 'element-plus'
 
 const activeTab = ref('general')
@@ -143,5 +178,48 @@ async function loadAudit() {
   try { const { data } = await getSystemAuditLog({ page: auditPage.value, size: 50 }); auditLogs.value = data.items; auditTotal.value = data.total } finally { auditLoading.value = false }
 }
 
-onMounted(() => { loadUsageConfig(); loadConfig(); loadRoles(); loadIp(); loadAudit() })
+// API Key Config
+const apiKeyForm = reactive({ api_key: '', api_model: '', api_base_url: '' })
+const apiKeyConfigured = ref(false), apiKeyLoading = ref(false), apiKeySaving = ref(false), apiKeyTesting = ref(false)
+const apiTestResult = ref(null)
+
+async function loadApiKeyConfig() {
+  apiKeyLoading.value = true
+  try {
+    const { data } = await getSystemApiConfig()
+    apiKeyForm.api_key = data.api_key || ''
+    apiKeyForm.api_model = data.api_model || ''
+    apiKeyForm.api_base_url = data.api_base_url || ''
+    apiKeyConfigured.value = data.api_key_configured || false
+    apiTestResult.value = null
+  } finally { apiKeyLoading.value = false }
+}
+
+async function saveApiKeyConfig() {
+  apiKeySaving.value = true
+  try {
+    await saveSystemApiConfig({
+      api_key: apiKeyForm.api_key,
+      api_model: apiKeyForm.api_model,
+      api_base_url: apiKeyForm.api_base_url,
+    })
+    ElMessage.success('系统API密钥配置已保存')
+    await loadApiKeyConfig()
+  } finally { apiKeySaving.value = false }
+}
+
+async function testApiKeyConfig() {
+  apiKeyTesting.value = true
+  apiTestResult.value = null
+  try {
+    const { data } = await testSystemApi({
+      api_key: apiKeyForm.api_key,
+      api_model: apiKeyForm.api_model,
+      api_base_url: apiKeyForm.api_base_url,
+    })
+    apiTestResult.value = data
+  } finally { apiKeyTesting.value = false }
+}
+
+onMounted(() => { loadUsageConfig(); loadConfig(); loadRoles(); loadIp(); loadAudit(); loadApiKeyConfig() })
 </script>

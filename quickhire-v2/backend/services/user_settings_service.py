@@ -2,6 +2,7 @@ import json
 from sqlalchemy.orm import Session
 from models import User, UserSettings
 from security import hash_password, verify_password
+from utils.encryption import encrypt, decrypt
 
 
 class UserSettingsService:
@@ -11,20 +12,26 @@ class UserSettingsService:
         s = db.query(UserSettings).filter(UserSettings.user_id == user_id).first()
         if s and s.preferences:
             try:
-                return json.loads(s.preferences)
+                prefs = json.loads(s.preferences)
+                if prefs.get("api_key"):
+                    prefs["api_key"] = decrypt(prefs["api_key"])
+                return prefs
             except json.JSONDecodeError:
                 return {}
         return {}
 
     @staticmethod
     def save_preferences(db: Session, user_id: int, preferences: dict):
+        prefs_to_save = dict(preferences)
+        if prefs_to_save.get("api_key"):
+            prefs_to_save["api_key"] = encrypt(prefs_to_save["api_key"])
         s = db.query(UserSettings).filter(UserSettings.user_id == user_id).first()
         if s:
-            s.preferences = json.dumps(preferences, ensure_ascii=False)
+            s.preferences = json.dumps(prefs_to_save, ensure_ascii=False)
         else:
             s = UserSettings(
                 user_id=user_id,
-                preferences=json.dumps(preferences, ensure_ascii=False),
+                preferences=json.dumps(prefs_to_save, ensure_ascii=False),
             )
             db.add(s)
         db.commit()

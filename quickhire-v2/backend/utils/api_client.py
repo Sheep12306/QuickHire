@@ -6,6 +6,52 @@ from typing import Optional
 from config import API_KEY, API_BASE_URL, API_MODEL, API_TIMEOUT, API_MAX_RETRIES
 
 
+def _get_system_api_key() -> Optional[str]:
+    """Read the admin-configured system-wide API key from SystemConfig table (encrypted)."""
+    try:
+        from database import SessionLocal
+        from models import SystemConfig
+        from utils.encryption import decrypt
+        db = SessionLocal()
+        try:
+            cfg = db.query(SystemConfig).filter(SystemConfig.key == "system_api_key").first()
+            if cfg and cfg.value:
+                return decrypt(cfg.value)
+            return None
+        finally:
+            db.close()
+    except Exception:
+        return None
+
+
+def _get_system_api_model() -> Optional[str]:
+    try:
+        from database import SessionLocal
+        from models import SystemConfig
+        db = SessionLocal()
+        try:
+            cfg = db.query(SystemConfig).filter(SystemConfig.key == "system_api_model").first()
+            return cfg.value if cfg else None
+        finally:
+            db.close()
+    except Exception:
+        return None
+
+
+def _get_system_api_base_url() -> Optional[str]:
+    try:
+        from database import SessionLocal
+        from models import SystemConfig
+        db = SessionLocal()
+        try:
+            cfg = db.query(SystemConfig).filter(SystemConfig.key == "system_api_base_url").first()
+            return cfg.value if cfg else None
+        finally:
+            db.close()
+    except Exception:
+        return None
+
+
 class APIError(Exception):
     pass
 
@@ -98,9 +144,9 @@ def call_qwen_api(
     api_model: Optional[str] = None,
     api_base_url: Optional[str] = None,
 ) -> str:
-    key = api_key or API_KEY
-    model = api_model or API_MODEL
-    base_url = api_base_url or API_BASE_URL
+    key = api_key or _get_system_api_key() or API_KEY
+    model = api_model or _get_system_api_model() or API_MODEL
+    base_url = api_base_url or _get_system_api_base_url() or API_BASE_URL
 
     if not validate_api_key(key):
         raise ValidationError("API密钥无效，请检查API Key配置")
@@ -217,9 +263,9 @@ def test_api_connection(
     api_model: Optional[str] = None,
     api_base_url: Optional[str] = None,
 ) -> dict:
-    key = api_key or API_KEY
-    model = api_model or API_MODEL
-    base_url = api_base_url or API_BASE_URL
+    key = api_key or _get_system_api_key() or API_KEY
+    model = api_model or _get_system_api_model() or API_MODEL
+    base_url = api_base_url or _get_system_api_base_url() or API_BASE_URL
 
     test_prompt = "你好，请回复OK"
 

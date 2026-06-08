@@ -5,7 +5,7 @@ from schemas import (
     ChangePasswordRequest, ProfileUpdateRequest,
     PreferencesRequest, TestApiRequest, UserResponse, MessageResponse,
 )
-from dependencies import get_db, get_current_user
+from dependencies import get_db, get_current_user, get_current_user_allow_pw_change
 from models import User
 from services.user_settings_service import UserSettingsService
 from services.resume_service import ResumeService
@@ -38,13 +38,16 @@ def save_preferences(
 @router.patch("/password")
 def change_password(
     req: ChangePasswordRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_allow_pw_change),
     db: Session = Depends(get_db),
 ):
     try:
         UserSettingsService.change_password(
             db, current_user.id, req.old_password, req.new_password
         )
+        if current_user.must_change_password:
+            current_user.must_change_password = False
+            db.commit()
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return {"ok": True}

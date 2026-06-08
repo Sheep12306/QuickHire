@@ -1,5 +1,19 @@
 from pydantic import BaseModel, field_validator
 from datetime import datetime
+import re
+
+
+def _validate_password(v: str) -> str:
+    from config import MIN_PASSWORD_LENGTH
+    if len(v) < MIN_PASSWORD_LENGTH:
+        raise ValueError(f"密码长度不能少于{MIN_PASSWORD_LENGTH}位")
+    if not re.search(r"[A-Z]", v):
+        raise ValueError("密码必须包含至少一个大写字母")
+    if not re.search(r"[a-z]", v):
+        raise ValueError("密码必须包含至少一个小写字母")
+    if not re.search(r"\d", v):
+        raise ValueError("密码必须包含至少一个数字")
+    return v
 
 
 # ── Auth ──────────────────────────────────────────────────────
@@ -11,11 +25,8 @@ class RegisterRequest(BaseModel):
 
     @field_validator("password")
     @classmethod
-    def password_length(cls, v: str) -> str:
-        from config import MIN_PASSWORD_LENGTH
-        if len(v) < MIN_PASSWORD_LENGTH:
-            raise ValueError(f"密码长度不能少于{MIN_PASSWORD_LENGTH}位")
-        return v
+    def password_strength(cls, v: str) -> str:
+        return _validate_password(v)
 
 
 class LoginRequest(BaseModel):
@@ -128,11 +139,8 @@ class ChangePasswordRequest(BaseModel):
 
     @field_validator("new_password")
     @classmethod
-    def password_length(cls, v: str) -> str:
-        from config import MIN_PASSWORD_LENGTH
-        if len(v) < MIN_PASSWORD_LENGTH:
-            raise ValueError(f"密码长度不能少于{MIN_PASSWORD_LENGTH}位")
-        return v
+    def password_strength(cls, v: str) -> str:
+        return _validate_password(v)
 
 
 class ProfileUpdateRequest(BaseModel):
@@ -417,6 +425,12 @@ class OrderRefundRequest(BaseModel):
 
 class ResetPasswordRequest(BaseModel):
     new_password: str
+
+
+class AdminApiConfigRequest(BaseModel):
+    api_key: str = ""
+    api_model: str = ""
+    api_base_url: str = ""
 
 
 class IpWhitelistRequest(BaseModel):
