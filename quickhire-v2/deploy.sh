@@ -7,11 +7,6 @@ FRONTEND_DIR="$PROJECT_DIR/quickhire-v2/frontend"
 VENV_DIR="$BACKEND_DIR/venv"
 PYTHON=python3.11
 
-echo "=== Pulling latest code ==="
-cd "$PROJECT_DIR"
-git fetch origin main
-git reset --hard origin/main
-
 echo "=== Setting up Python venv ==="
 VENV_PY=$("$VENV_DIR/bin/python3" --version 2>&1 || true)
 REQUIRED_PY=$($PYTHON --version 2>&1)

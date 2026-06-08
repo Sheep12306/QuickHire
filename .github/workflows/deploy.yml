@@ -49,4 +49,7 @@ jobs:
           script: |
             set -e
             cd /opt/quickhire || { echo "Project directory not found. Clone the repo first."; exit 1; }
+            git fetch origin main
+            git reset --hard origin/main
+            chown -R quickhire:quickhire quickhire-v2/backend/ 2>/dev/null || true
             bash quickhire-v2/deploy.sh
