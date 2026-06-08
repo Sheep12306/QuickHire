@@ -37,6 +37,7 @@ npm ci --legacy-peer-deps
 npm run build
 
 echo "=== Restarting backend ==="
+chown -R quickhire:quickhire "$BACKEND_DIR" 2>/dev/null || true
 systemctl restart quickhire
 
 echo "=== Deploy complete ==="
