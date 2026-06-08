@@ -1,8 +1,32 @@
 <template>
   <div>
-    <div class="page-header"><h2>系统设置</h2></div>
+    <div class="page-header" style="display:flex;align-items:center;justify-content:space-between">
+      <h2>系统设置</h2>
+      <el-button type="primary" @click="$router.push('/admin/dashboard')" :icon="ArrowLeft">返回仪表盘</el-button>
+    </div>
 
     <el-tabs v-model="activeTab">
+      <!-- Change Password -->
+      <el-tab-pane label="修改密码" name="password">
+        <div class="detail-card" v-loading="pwLoading">
+          <h3>修改管理员密码</h3>
+          <el-form label-width="120px" style="max-width:480px">
+            <el-form-item label="原密码">
+              <el-input v-model="pwForm.old_password" type="password" show-password />
+            </el-form-item>
+            <el-form-item label="新密码">
+              <el-input v-model="pwForm.new_password" type="password" show-password placeholder="至少8位，需含大小写字母+数字" />
+            </el-form-item>
+            <el-form-item label="确认新密码">
+              <el-input v-model="pwForm.confirm_password" type="password" show-password />
+            </el-form-item>
+            <el-form-item>
+              <el-button type="primary" @click="changePassword" :loading="pwSaving">修改密码</el-button>
+            </el-form-item>
+          </el-form>
+        </div>
+      </el-tab-pane>
+
       <!-- Free Usage Config -->
       <el-tab-pane label="免费额度" name="usage">
         <div class="detail-card" v-loading="usageLoading">
@@ -125,6 +149,8 @@
 import { ref, reactive, onMounted } from 'vue'
 import { getSystemConfig, updateSystemConfig, getRoles, getIpWhitelist, updateIpWhitelist, getSystemAuditLog, getSystemApiConfig, saveSystemApiConfig, testSystemApi } from '../../api/admin/system'
 import { ElMessage } from 'element-plus'
+import { ArrowLeft } from '@element-plus/icons-vue'
+import api from '../../api'
 
 const activeTab = ref('general')
 
@@ -219,6 +245,28 @@ async function testApiKeyConfig() {
     })
     apiTestResult.value = data
   } finally { apiKeyTesting.value = false }
+}
+
+// Change Password
+const pwForm = reactive({ old_password: '', new_password: '', confirm_password: '' })
+const pwLoading = ref(false), pwSaving = ref(false)
+
+async function changePassword() {
+  if (!pwForm.old_password) return ElMessage.warning('请输入原密码')
+  if (!pwForm.new_password) return ElMessage.warning('请输入新密码')
+  if (pwForm.new_password.length < 8) return ElMessage.warning('新密码至少8位')
+  if (!/[A-Z]/.test(pwForm.new_password)) return ElMessage.warning('新密码需包含大写字母')
+  if (!/[a-z]/.test(pwForm.new_password)) return ElMessage.warning('新密码需包含小写字母')
+  if (!/[0-9]/.test(pwForm.new_password)) return ElMessage.warning('新密码需包含数字')
+  if (pwForm.new_password !== pwForm.confirm_password) return ElMessage.warning('两次输入的新密码不一致')
+  pwSaving.value = true
+  try {
+    await api.patch('/profile/password', { old_password: pwForm.old_password, new_password: pwForm.new_password })
+    ElMessage.success('密码修改成功')
+    pwForm.old_password = ''; pwForm.new_password = ''; pwForm.confirm_password = ''
+  } catch (e) {
+    ElMessage.error(e.response?.data?.detail || '修改失败')
+  } finally { pwSaving.value = false }
 }
 
 onMounted(() => { loadUsageConfig(); loadConfig(); loadRoles(); loadIp(); loadAudit(); loadApiKeyConfig() })
