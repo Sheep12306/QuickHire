@@ -6,6 +6,7 @@ from services.auth_service import AuthService, AuthError
 from services.email_service import EmailService, EmailError
 from security import create_access_token
 from models import User
+import logging, traceback
 
 router = APIRouter()
 
@@ -22,6 +23,9 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
         )
     except AuthError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        logging.error(f"Unexpected error in /register: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"服务器内部错误: {str(e)}")
 
     token = create_access_token({"sub": str(user.id), "role": user.role})
     return TokenResponse(
@@ -36,6 +40,9 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
         user = AuthService.login(db=db, credential=req.credential, password=req.password)
     except AuthError as e:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
+    except Exception as e:
+        logging.error(f"Unexpected error in /login: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"服务器内部错误: {str(e)}")
 
     token = create_access_token({"sub": str(user.id), "role": user.role})
     return TokenResponse(
