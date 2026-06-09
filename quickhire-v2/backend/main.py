@@ -68,6 +68,27 @@ def health():
                     info["admin_password_ok"] = verify_password("admin123", admin.password_hash)
                 except Exception as ve:
                     info["admin_password_ok"] = f"error: {ve}"
+                # Test full login flow
+                try:
+                    from services.auth_service import AuthService
+                    u = AuthService.login(db, "admin@quickhire.local", "admin123")
+                    info["login_test"] = f"ok (id={u.id})"
+                    # Test token creation
+                    try:
+                        from security import create_access_token
+                        tok = create_access_token({"sub": str(u.id), "role": u.role})
+                        info["token_test"] = f"ok (len={len(tok)})"
+                        # Test response serialization
+                        try:
+                            from schemas import UserResponse
+                            ur = UserResponse.model_validate(u)
+                            info["serialize_test"] = f"ok (name={ur.display_name})"
+                        except Exception as se:
+                            info["serialize_test"] = f"error: {se}"
+                    except Exception as te:
+                        info["token_test"] = f"error: {te}"
+                except Exception as le:
+                    info["login_test"] = f"error: {le}"
             cfg = db.query(SystemConfig).filter(SystemConfig.key == "system_api_key").first()
             info["system_api_key"] = bool(cfg and cfg.value)
         finally:
