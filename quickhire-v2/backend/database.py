@@ -55,10 +55,12 @@ def init_db():
                 from security import hash_password
                 pwd = hash_password("admin123")
                 conn.exec_driver_sql(
-                    f"INSERT INTO users (email, password_hash, display_name, role, is_active, must_change_password) "
-                    f"VALUES ('admin@quickhire.local', '{pwd}', '超级管理员', 'super_admin', 1, 1)"
+                    "INSERT INTO users (email, password_hash, display_name, role, is_active, must_change_password) "
+                    "VALUES (:email, :pwd, :name, :role, 1, 1)",
+                    {"email": "admin@quickhire.local", "pwd": pwd, "name": "超级管理员", "role": "super_admin"},
                 )
-        except Exception:
-            pass  # table might not exist yet on first run
+        except Exception as e:
+            import logging
+            logging.warning(f"init_db: could not seed admin user: {e}")
 
         conn.commit()
