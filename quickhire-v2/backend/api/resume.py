@@ -10,7 +10,7 @@ from dependencies import get_db, get_current_user, get_optional_user
 from models import User
 from services.resume_service import ResumeService
 from services.interview_service import InterviewService
-from utils.api_client import call_qwen_api_with_retry, safe_json_parse
+from utils.api_client import call_qwen_api_with_retry, safe_json_parse, APIError, ValidationError
 from utils.prompt_builder import (
     build_optimize_prompt,
     build_resume_diagnosis_prompt,
@@ -119,9 +119,16 @@ async def optimize_resume(
         except UsageError as e:
             raise HTTPException(status_code=429, detail=str(e))
 
-    raw = await asyncio.to_thread(
-        call_qwen_api_with_retry, prompt, api_key=api_key, api_model=api_model, api_base_url=api_base_url
-    )
+    try:
+        raw = await asyncio.to_thread(
+            call_qwen_api_with_retry, prompt, api_key=api_key, api_model=api_model, api_base_url=api_base_url,
+            endpoint="optimize", user_id=current_user.id if current_user else None,
+        )
+    except ValidationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except APIError as e:
+        raise HTTPException(status_code=502, detail=f"AI服务调用失败: {str(e)}")
+
     parts = _split_ai_result(raw)
 
     result = {
@@ -170,9 +177,16 @@ async def diagnose_resume(
         except UsageError as e:
             raise HTTPException(status_code=429, detail=str(e))
 
-    raw = await asyncio.to_thread(
-        call_qwen_api_with_retry, prompt, api_key=api_key, api_model=api_model, api_base_url=api_base_url
-    )
+    try:
+        raw = await asyncio.to_thread(
+            call_qwen_api_with_retry, prompt, api_key=api_key, api_model=api_model, api_base_url=api_base_url,
+            endpoint="diagnose", user_id=current_user.id if current_user else None,
+        )
+    except ValidationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except APIError as e:
+        raise HTTPException(status_code=502, detail=f"AI服务调用失败: {str(e)}")
+
     result = safe_json_parse(raw)
 
     if current_user:
@@ -227,9 +241,16 @@ async def generate_questions(
         scope=req.scope,
         question_count=req.question_count,
     )
-    raw = await asyncio.to_thread(
-        call_qwen_api_with_retry, prompt, api_key=api_key, api_model=api_model, api_base_url=api_base_url
-    )
+    try:
+        raw = await asyncio.to_thread(
+            call_qwen_api_with_retry, prompt, api_key=api_key, api_model=api_model, api_base_url=api_base_url,
+            endpoint="questions", user_id=current_user.id if current_user else None,
+        )
+    except ValidationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except APIError as e:
+        raise HTTPException(status_code=502, detail=f"AI服务调用失败: {str(e)}")
+
     result = safe_json_parse(raw)
 
     questions = result.get("questions", []) if isinstance(result, dict) else []
