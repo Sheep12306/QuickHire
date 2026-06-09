@@ -7,7 +7,11 @@ from config import CORS_ORIGINS
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    init_db()
+    try:
+        init_db()
+    except Exception as e:
+        import logging
+        logging.error(f"init_db failed: {e}")
     yield
 
 
@@ -47,4 +51,20 @@ app.include_router(admin_router, prefix="/api/admin", tags=["Admin"])
 
 @app.get("/api/health")
 def health():
-    return {"status": "ok"}
+    from database import SessionLocal
+    from models import User, SystemConfig
+    info = {"status": "ok", "db": "ok", "admin_exists": False, "system_api_key": False}
+    try:
+        db = SessionLocal()
+        try:
+            admin = db.query(User).filter(User.role == "super_admin").first()
+            info["admin_exists"] = bool(admin)
+            info["admin_email"] = admin.email if admin else None
+            cfg = db.query(SystemConfig).filter(SystemConfig.key == "system_api_key").first()
+            info["system_api_key"] = bool(cfg and cfg.value)
+        finally:
+            db.close()
+    except Exception as e:
+        info["db"] = f"error: {e}"
+        info["status"] = "degraded"
+    return info
