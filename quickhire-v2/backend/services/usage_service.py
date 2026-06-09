@@ -1,8 +1,9 @@
-from datetime import date
+from datetime import datetime, timezone, timedelta
 from sqlalchemy.orm import Session
 from models import DailyUsage, SystemConfig
 
 FALLBACK_LIMIT = 2
+CST = timezone(timedelta(hours=8))  # China Standard Time
 
 
 class UsageError(Exception):
@@ -25,8 +26,12 @@ def _get_free_config(db: Session) -> tuple[bool, int]:
 class UsageService:
 
     @staticmethod
+    def _today_str() -> str:
+        return datetime.now(CST).date().isoformat()
+
+    @staticmethod
     def _get_today(db: Session, user_id: int) -> DailyUsage:
-        today = date.today().isoformat()
+        today = UsageService._today_str()
         record = (
             db.query(DailyUsage)
             .filter(DailyUsage.user_id == user_id, DailyUsage.usage_date == today)
