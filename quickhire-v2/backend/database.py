@@ -46,6 +46,14 @@ def init_db():
             except Exception:
                 pass  # column already exists
 
+        # Fix existing rows with NULL membership_type
+        try:
+            conn.exec_driver_sql(
+                "UPDATE users SET membership_type = 'free' WHERE membership_type IS NULL"
+            )
+        except Exception:
+            pass
+
         # Seed default super_admin if none exists
         try:
             result = conn.exec_driver_sql(
@@ -55,8 +63,8 @@ def init_db():
                 from security import hash_password
                 pwd = hash_password("admin123")
                 conn.exec_driver_sql(
-                    "INSERT INTO users (email, password_hash, display_name, role, is_active, must_change_password) "
-                    "VALUES (:email, :pwd, :name, :role, 1, 1)",
+                    "INSERT INTO users (email, password_hash, display_name, role, is_active, must_change_password, membership_type) "
+                    "VALUES (:email, :pwd, :name, :role, 1, 1, 'free')",
                     {"email": "admin@quickhire.local", "pwd": pwd, "name": "超级管理员", "role": "super_admin"},
                 )
         except Exception as e:
