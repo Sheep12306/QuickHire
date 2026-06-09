@@ -7,7 +7,7 @@
         个人中心
       </h1>
 
-      <el-tabs type="border-card" class="main-tabs">
+      <el-tabs v-model="activeTab" type="border-card" class="main-tabs">
         <!-- Profile Info -->
         <el-tab-pane name="info">
           <template #label>
@@ -47,19 +47,21 @@
               <el-icon><Star /></el-icon> 我的收藏
             </span>
           </template>
-          <el-table :data="favorites" v-if="favorites.length" style="width:100%">
-            <el-table-column prop="question" label="题目" min-width="300" show-overflow-tooltip />
-            <el-table-column prop="position" label="岗位" width="140" />
-            <el-table-column prop="type" label="题型" width="100" />
-            <el-table-column prop="difficulty" label="难度" width="80" />
-            <el-table-column label="操作" width="80" align="center">
-              <template #default="{ row }">
-                <el-button text type="danger" size="small" @click="removeFavorite(row)">
-                  取消收藏
-                </el-button>
-              </template>
-            </el-table-column>
-          </el-table>
+          <div v-if="favorites.length" class="table-responsive">
+            <el-table :data="favorites" style="width:100%">
+              <el-table-column prop="question" label="题目" min-width="200" show-overflow-tooltip />
+              <el-table-column prop="position" label="岗位" width="100" />
+              <el-table-column prop="type" label="题型" width="80" />
+              <el-table-column prop="difficulty" label="难度" width="70" />
+              <el-table-column label="操作" width="80" align="center">
+                <template #default="{ row }">
+                  <el-button text type="danger" size="small" @click="removeFavorite(row)">
+                    取消收藏
+                  </el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
           <el-empty v-else description="暂无收藏" />
         </el-tab-pane>
 
@@ -85,6 +87,8 @@
                 v-model="apiModel"
                 size="large"
                 style="width:100%"
+                filterable
+                allow-create
               >
                 <el-option v-for="m in currentModels" :key="m" :label="m" :value="m" />
               </el-select>
@@ -112,17 +116,19 @@
               <el-icon><Document /></el-icon> 简历历史
             </span>
           </template>
-          <el-table :data="history" v-if="history.length">
-            <el-table-column prop="version_number" label="版本" width="80" />
-            <el-table-column prop="target_position" label="目标岗位" />
-            <el-table-column prop="optimization_style" label="优化风格" />
-            <el-table-column prop="created_at" label="创建时间" />
-            <el-table-column label="操作" width="100">
-              <template #default="{ row }">
-                <el-button text type="primary" @click="loadResume(row)">加载</el-button>
-              </template>
-            </el-table-column>
-          </el-table>
+          <div v-if="history.length" class="table-responsive">
+            <el-table :data="history">
+              <el-table-column prop="version_number" label="版本" width="60" />
+              <el-table-column prop="target_position" label="目标岗位" min-width="120" show-overflow-tooltip />
+              <el-table-column prop="optimization_style" label="优化风格" min-width="100" show-overflow-tooltip />
+              <el-table-column prop="created_at" label="创建时间" min-width="100" show-overflow-tooltip />
+              <el-table-column label="操作" width="80">
+                <template #default="{ row }">
+                  <el-button text type="primary" size="small" @click="loadResume(row)">加载</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
           <el-empty v-else description="暂无简历" />
         </el-tab-pane>
 
@@ -167,6 +173,7 @@ import api from '../api'
 
 const auth = useAuthStore()
 const resumeStore = useResumeStore()
+const activeTab = ref('info')
 
 // ── Provider / API Config ──────────────────────────────
 const providers = [
@@ -350,7 +357,7 @@ async function removeFavorite(row) {
 function loadResume(row) {
   resumeStore.resumeText = row.original_content
   resumeStore.optimizedResult = { optimized_text: row.optimized_content, diagnosis: row.analysis_result }
-  ElMessage.success('已加载简历')
+  ElMessage.success('已加载简历，请到简历优化页面查看')
 }
 </script>
 
@@ -370,10 +377,19 @@ function loadResume(row) {
 .profile-form {
   max-width: 480px;
 }
+.profile-form :deep(.el-form-item__label) {
+  text-align: left;
+  justify-content: flex-start;
+}
 .tab-desc {
   color: var(--text-secondary);
   font-size: 0.9rem;
   margin-bottom: 1rem;
+}
+
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* API 配置区：消除所有输入框的聚焦绿色外发光 */
@@ -408,10 +424,21 @@ function loadResume(row) {
 }
 
 @media (max-width: 480px) {
+  .main-content { padding: 64px 0.6rem 1rem; }
+  .page-title { font-size: 1.2rem; }
+
   .main-tabs :deep(.el-tabs__item) {
-    font-size: 0.82rem;
-    padding: 0 0.5rem;
+    font-size: 0.78rem;
+    padding: 0 0.45rem;
   }
+  .main-tabs :deep(.el-tabs__content) { padding: 0.75rem; }
   .tab-label { gap: 2px; }
+
+  .profile-form :deep(.el-form-item) {
+    margin-bottom: 0.75rem;
+  }
+  .profile-form :deep(.el-button) {
+    width: 100%;
+  }
 }
 </style>

@@ -1,5 +1,10 @@
 <template>
   <div class="admin-sidebar">
+    <!-- Mobile close button -->
+    <div v-if="mobileOpen" class="mobile-sidebar-close">
+      <el-icon :size="20" @click="$emit('closeMobile')"><Close /></el-icon>
+    </div>
+
     <router-link to="/" class="logo">
       <svg width="28" height="28" viewBox="0 0 28 28" fill="none" class="logo-svg">
         <rect width="28" height="28" rx="8" fill="#059669"/>
@@ -78,12 +83,15 @@ import { useRoute } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
 import {
   DataAnalysis, User, Document, Monitor, TrendCharts,
-  EditPen, ShoppingBag, Setting,
+  EditPen, ShoppingBag, Setting, Close,
 } from '@element-plus/icons-vue'
 
 defineProps({
   collapsed: { type: Boolean, default: false },
+  mobileOpen: { type: Boolean, default: false },
 })
+
+defineEmits(['closeMobile'])
 
 const route = useRoute()
 const auth = useAuthStore()

@@ -3,7 +3,7 @@
     <div class="page-header"><h2>成本统计</h2><p>AI API 调用成本分析</p></div>
 
     <el-row :gutter="16" style="margin-bottom:20px">
-      <el-col :span="8" v-for="s in stats" :key="s.label">
+      <el-col :xs="24" :sm="12" :md="8" v-for="s in stats" :key="s.label">
         <div class="stat-card">
           <div class="stat-label">{{ s.label }}</div>
           <div class="stat-value" style="font-size:22px">{{ s.value }}</div>
@@ -12,12 +12,12 @@
     </el-row>
 
     <el-row :gutter="16">
-      <el-col :span="12">
+      <el-col :xs="24" :md="12">
         <div class="detail-card"><h3>每日成本趋势</h3>
           <v-chart :option="dailyChartOption" style="height:300px" autoresize />
         </div>
       </el-col>
-      <el-col :span="12">
+      <el-col :xs="24" :md="12">
         <div class="detail-card"><h3>按模型统计</h3>
           <el-table :data="modelStats" stripe>
             <el-table-column prop="model" label="模型" />

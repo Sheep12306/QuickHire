@@ -376,4 +376,21 @@ function dimColor(score) {
   .question-card-inner { padding: 1rem; }
   .question-card-inner h3 { font-size: 1rem; }
 }
+
+@media (max-width: 480px) {
+  .main-content { padding: 64px 0.6rem 1rem; }
+  .page-title { font-size: 1.15rem; }
+
+  .setup-card, .question-area, .feedback-area {
+    padding: 1rem 0.75rem;
+  }
+  .finished-area { padding: 1.5rem 1rem; }
+
+  .question-card-inner { padding: 0.75rem; }
+  .question-card-inner h3 { font-size: 0.9rem; }
+  .question-text { font-size: 0.9rem; }
+
+  .feedback-actions { gap: 0.5rem; }
+  .dim-label { font-size: 0.82rem; }
+}
 </style>

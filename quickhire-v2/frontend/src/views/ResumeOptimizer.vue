@@ -821,8 +821,28 @@ function copyQuestions() {
 }
 
 @media (max-width: 480px) {
+  .main-content { padding: 64px 0.6rem 1rem; }
+
+  .input-section { padding: 0.75rem; }
+  .config-bar { padding: 0.6rem 0.75rem; }
+
   .step-progress-items { gap: 0.5rem; }
   .step-node-label { font-size: 0.7rem; }
   .step-node-circle { width: 36px; height: 36px; font-size: 0.75rem; }
+
+  .highlight-box pre { font-size: 0.78rem; }
+  .optimized-text pre { font-size: 0.78rem; padding: 0.6rem; }
+
+  .q-card { padding: 0.6rem 0.75rem; }
+  .q-text { font-size: 0.82rem; }
+  .q-detail-box { font-size: 0.78rem; }
+
+  .main-tabs :deep(.el-tabs__item) {
+    font-size: 0.78rem;
+    padding: 0 0.45rem;
+  }
+
+  .section-block { padding: 0 0.6rem 0.6rem; }
+  .section-block h3 { font-size: 0.85rem; }
 }
 </style>

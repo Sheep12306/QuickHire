@@ -363,7 +363,7 @@ const features = [
   .hero-blob--2 { width: 150px; height: 150px; }
 
   .stats-section { padding: 0 1rem 1.5rem; }
-  .stats-row { flex-wrap: wrap; gap: 0 1.5rem; padding: 1rem 0.75rem; }
+  .stats-row { flex-wrap: wrap; gap: 0.75rem 1.5rem; padding: 1rem 0.75rem; }
   .stat-num { font-size: 1.25rem; }
   .stat-label { font-size: 0.72rem; }
 
@@ -395,7 +395,7 @@ const features = [
   .hero-subtitle { font-size: 0.85rem; }
 
   .stats-section { padding: 0 0.75rem 1rem; }
-  .stats-row { gap: 0 0.75rem; padding: 0.75rem 0.5rem; }
+  .stats-row { gap: 0.6rem 0.75rem; padding: 0.75rem 0.5rem; }
   .stat-num { font-size: 1.05rem; }
   .stat-label { font-size: 0.68rem; }
 

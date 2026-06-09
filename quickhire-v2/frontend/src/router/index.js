@@ -160,6 +160,12 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to, from, next) => {
+  // Mobile: redirect landing to resume optimizer
+  if (to.path === '/' && window.innerWidth <= 768) {
+    next('/resume-optimizer')
+    return
+  }
+
   const token = localStorage.getItem('token')
 
   // User routes requiring auth

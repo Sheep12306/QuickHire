@@ -297,7 +297,8 @@ onMounted(() => {
     padding: 0.75rem 1rem;
   }
   .filter-bar .el-input,
-  .filter-bar .el-select {
+  .filter-bar .el-select,
+  .filter-bar .el-button {
     width: 100% !important;
     flex: 1 1 100%;
   }
@@ -324,5 +325,24 @@ onMounted(() => {
   .q-detail { font-size: 0.85rem; }
 
   .main-tabs :deep(.el-tabs__content) { padding: 0.75rem; }
+}
+
+@media (max-width: 480px) {
+  .main-content { padding: 64px 0.6rem 1rem; }
+  .page-title { font-size: 1.15rem; }
+
+  .main-tabs :deep(.el-tabs__item) {
+    font-size: 0.78rem;
+    padding: 0 0.45rem;
+  }
+  .main-tabs :deep(.el-tabs__content) { padding: 0.6rem; }
+
+  .gen-card { padding: 0.75rem; }
+  .q-card { padding: 0.6rem 0.75rem; }
+  .q-text { font-size: 0.82rem; }
+  .q-detail { font-size: 0.78rem; }
+
+  .section-head { gap: 0.35rem; }
+  .section-head h2 { font-size: 0.95rem; }
 }
 </style>

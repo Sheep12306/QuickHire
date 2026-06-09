@@ -80,12 +80,14 @@
           </el-form-item>
           <el-form-item><el-button type="primary" @click="handleAddApp">添加</el-button></el-form-item>
         </el-form>
+        <div class="table-responsive">
         <el-table :data="applications" style="margin-top:1rem" v-if="applications.length">
-          <el-table-column prop="company_name" label="公司" />
-          <el-table-column prop="position" label="职位" />
-          <el-table-column prop="status" label="状态" />
-          <el-table-column prop="applied_at" label="投递时间" />
+          <el-table-column prop="company_name" label="公司" show-overflow-tooltip />
+          <el-table-column prop="position" label="职位" show-overflow-tooltip />
+          <el-table-column prop="status" label="状态" width="80" />
+          <el-table-column prop="applied_at" label="投递时间" width="110" />
         </el-table>
+        </div>
       </div>
     </main>
   </div>
@@ -105,6 +107,7 @@ const timelineChart = ref(null)
 const radarChart = ref(null)
 const scoreChart = ref(null)
 const funnelChart = ref(null)
+const chartInstances = []
 
 const metrics = computed(() => {
   const d = dashboard.value || {}
@@ -153,8 +156,13 @@ function renderCharts() {
   const d = dashboard.value
   if (!d) return
 
+  // Dispose old chart instances
+  chartInstances.forEach(c => c.dispose())
+  chartInstances.length = 0
+
   if (timelineChart.value && d.resume_timeline?.length) {
     const chart = echarts.init(timelineChart.value)
+    chartInstances.push(chart)
     chart.setOption({
       tooltip: { trigger: 'axis' },
       grid: { top: 20, right: 20, bottom: 30, left: 40 },
@@ -173,6 +181,7 @@ function renderCharts() {
 
   if (radarChart.value && d.radar_data) {
     const chart = echarts.init(radarChart.value)
+    chartInstances.push(chart)
     const indicators = Object.keys(d.radar_data).map(k => ({ name: k, max: 100 }))
     const values = Object.values(d.radar_data)
     chart.setOption({
@@ -193,6 +202,7 @@ function renderCharts() {
 
   if (scoreChart.value && d.interview_scores?.length) {
     const chart = echarts.init(scoreChart.value)
+    chartInstances.push(chart)
     chart.setOption({
       tooltip: { trigger: 'axis' },
       grid: { top: 20, right: 20, bottom: 30, left: 40 },
@@ -211,6 +221,7 @@ function renderCharts() {
 
   if (funnelChart.value && funnelData.value.length) {
     const chart = echarts.init(funnelChart.value)
+    chartInstances.push(chart)
     const funnelColors = ['#059669', '#10b981', '#34d399', '#6ee7b7']
     chart.setOption({
       series: [{
@@ -224,7 +235,12 @@ function renderCharts() {
   }
 }
 
-onMounted(loadData)
+onMounted(() => {
+  loadData()
+  window.addEventListener('resize', () => {
+    chartInstances.forEach(c => c.resize())
+  })
+})
 watch(dashboard, () => nextTick(renderCharts))
 </script>
 
@@ -273,6 +289,11 @@ watch(dashboard, () => nextTick(renderCharts))
   display: flex; align-items: center;
 }
 
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 @media (max-width: 768px) {
   .main-content { padding: 70px 1rem 1.5rem; }
   .page-title { font-size: 1.4rem; }
@@ -282,8 +303,8 @@ watch(dashboard, () => nextTick(renderCharts))
 
   .chart-card { padding: 1rem; }
   .chart-card h3 { font-size: 0.88rem; }
+  .chart-card :deep([style*="height:300px"]) { height: 220px !important; }
 
-  /* Make form inline stack on mobile */
   .chart-card :deep(.el-form--inline) {
     display: flex;
     flex-direction: column;
@@ -299,7 +320,15 @@ watch(dashboard, () => nextTick(renderCharts))
 }
 
 @media (max-width: 480px) {
+  .main-content { padding: 64px 0.6rem 1rem; }
+  .page-title { font-size: 1.1rem; }
+
+  .metric-card { padding: 0.75rem; }
   .metric-value { font-size: 1.1rem; }
   .metric-label { font-size: 0.7rem; }
+
+  .chart-card { padding: 0.75rem; }
+  .chart-card h3 { font-size: 0.82rem; }
+  .chart-card :deep([style*="height:300px"]) { height: 200px !important; }
 }
 </style>

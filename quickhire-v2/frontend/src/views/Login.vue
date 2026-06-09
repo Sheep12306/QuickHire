@@ -348,6 +348,7 @@ async function handleRegister() {
 @media (max-width: 700px) {
   .login-panel {
     flex-direction: column;
+    min-height: auto;
   }
   .panel-decor {
     flex: 0 0 auto;
@@ -369,7 +370,7 @@ async function handleRegister() {
     padding: 70px 0.75rem 1rem;
   }
   .panel-decor {
-    padding: 1.5rem 1rem;
+    display: none;
   }
   .decor-title { font-size: 1.3rem; }
   .panel-form {

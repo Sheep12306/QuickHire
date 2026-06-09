@@ -6,7 +6,6 @@
       <div class="topnav-left">
         <button
           class="hamburger"
-          :class="{ 'hamburger--open': mobileMenuOpen }"
           @click="mobileMenuOpen = !mobileMenuOpen"
           :aria-label="mobileMenuOpen ? '关闭菜单' : '打开菜单'"
         >
@@ -32,7 +31,7 @@
         </router-link>
       </div>
 
-      <!-- Right: desktop actions + share -->
+      <!-- Right: desktop actions -->
       <div class="topnav-right">
         <div class="topnav-actions desktop-only">
           <template v-if="auth.isLoggedIn">
@@ -72,10 +71,6 @@
             </el-button>
           </template>
         </div>
-
-        <button class="share-btn" @click="handleShare" aria-label="分享">
-          <el-icon :size="18"><Share /></el-icon>
-        </button>
       </div>
     </div>
 
@@ -83,6 +78,14 @@
 
   <!-- Left drawer menu — outside <nav> so fixed positioning works correctly -->
   <div class="mobile-drawer" :class="{ 'mobile-drawer--open': mobileMenuOpen }">
+    <!-- Drawer header: logo left, close right -->
+    <div class="mobile-drawer-header">
+      <span class="mobile-drawer-brand">QuickHire</span>
+      <button class="mobile-drawer-close" @click="mobileMenuOpen = false" aria-label="关闭菜单">
+        <el-icon :size="22"><Close /></el-icon>
+      </button>
+    </div>
+
     <!-- Login/Register at top (not logged in) -->
     <div v-if="!auth.isLoggedIn" class="mobile-auth-top">
       <el-button type="primary" size="large" @click="$router.push('/login'); mobileMenuOpen = false" class="mobile-auth-btn">
@@ -125,7 +128,6 @@
 
 <script setup>
 import { ref } from 'vue'
-import { ElMessage } from 'element-plus'
 import { useAuthStore } from '../../stores/auth'
 import { useRouter } from 'vue-router'
 
@@ -147,19 +149,6 @@ function handleLogout() {
   router.push('/')
 }
 
-async function handleShare() {
-  const url = window.location.href
-  const title = 'QuickHire — AI 简历优化与面试教练'
-
-  if (navigator.share) {
-    try {
-      await navigator.share({ title, url })
-    } catch { /* user cancelled */ }
-  } else {
-    await navigator.clipboard.writeText(url)
-    ElMessage.success('链接已复制到剪贴板')
-  }
-}
 </script>
 
 <style scoped>
@@ -292,27 +281,6 @@ async function handleShare() {
   border-radius: var(--radius-sm);
   font-weight: 600;
 }
-/* ── Share button ─────────────────────────── */
-.share-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border: none;
-  background: var(--green-50);
-  color: var(--green-600);
-  border-radius: 50%;
-  cursor: pointer;
-  transition: background var(--duration-fast) var(--ease-out),
-              transform var(--duration-fast) var(--ease-out);
-  flex-shrink: 0;
-}
-.share-btn:hover {
-  background: var(--green-100);
-  transform: scale(1.08);
-}
-
 /* ── Hamburger ────────────────────────────── */
 .hamburger {
   display: none;
@@ -336,16 +304,7 @@ async function handleShare() {
   transition: all 0.3s var(--ease-out);
   transform-origin: center;
 }
-.hamburger--open span:nth-child(1) {
-  transform: translateY(7px) rotate(45deg);
-}
-.hamburger--open span:nth-child(2) {
-  opacity: 0;
-  transform: scaleX(0);
-}
-.hamburger--open span:nth-child(3) {
-  transform: translateY(-7px) rotate(-45deg);
-}
+/* hamburger stays ≡ when sidebar is open — close × is inside the drawer */
 
 /* ── Root wrapper ────────────────────────── */
 .navbar-root {
@@ -361,8 +320,8 @@ async function handleShare() {
   left: 0;
   height: 100vh;
   height: 100dvh;
-  width: 68vw;
-  max-width: 260px;
+  width: 60vw;
+  max-width: 230px;
   z-index: 998;
   background: #fff;
   box-shadow: 2px 0 32px rgba(0, 0, 0, 0.15);
@@ -370,12 +329,49 @@ async function handleShare() {
   display: flex;
   flex-direction: column;
   overflow-y: auto;
-  padding: 72px 0.85rem 1.5rem;
+  padding: 0 0.75rem 1.5rem;
   transform: translateX(-100%);
   transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .mobile-drawer--open {
   transform: translateX(0);
+}
+
+/* Drawer header: logo left, close right at drawer boundary */
+.mobile-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 60px;
+  padding: 0 0.1rem 0 0;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border-light);
+  margin-bottom: 0.5rem;
+}
+.mobile-drawer-brand {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--green-700);
+  letter-spacing: -0.02em;
+}
+.mobile-drawer-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: background var(--duration-fast) var(--ease-out);
+  flex-shrink: 0;
+  margin-right: -0.25rem;
+}
+.mobile-drawer-close:hover {
+  background: var(--bg-page);
+  color: var(--text-primary);
 }
 
 .mobile-drawer :deep(.nav-icon) { font-size: 1.1rem; }
