@@ -1,4 +1,4 @@
-import asyncio, json, io
+import asyncio, json, io, traceback, logging
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
@@ -128,6 +128,9 @@ async def optimize_resume(
         raise HTTPException(status_code=400, detail=str(e))
     except APIError as e:
         raise HTTPException(status_code=502, detail=f"AI服务调用失败: {str(e)}")
+    except Exception as e:
+        logging.error(f"Unexpected error in /optimize: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"服务器内部错误: {str(e)}")
 
     parts = _split_ai_result(raw)
 
@@ -186,6 +189,9 @@ async def diagnose_resume(
         raise HTTPException(status_code=400, detail=str(e))
     except APIError as e:
         raise HTTPException(status_code=502, detail=f"AI服务调用失败: {str(e)}")
+    except Exception as e:
+        logging.error(f"Unexpected error in /diagnose: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"服务器内部错误: {str(e)}")
 
     result = safe_json_parse(raw)
 
@@ -250,6 +256,9 @@ async def generate_questions(
         raise HTTPException(status_code=400, detail=str(e))
     except APIError as e:
         raise HTTPException(status_code=502, detail=f"AI服务调用失败: {str(e)}")
+    except Exception as e:
+        logging.error(f"Unexpected error in /questions: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"服务器内部错误: {str(e)}")
 
     result = safe_json_parse(raw)
 
