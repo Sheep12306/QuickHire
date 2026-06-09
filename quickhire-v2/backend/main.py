@@ -53,6 +53,7 @@ app.include_router(admin_router, prefix="/api/admin", tags=["Admin"])
 def health():
     from database import SessionLocal
     from models import User, SystemConfig
+    from security import verify_password
     info = {"status": "ok", "db": "ok", "admin_exists": False, "system_api_key": False}
     try:
         db = SessionLocal()
@@ -60,6 +61,13 @@ def health():
             admin = db.query(User).filter(User.role == "super_admin").first()
             info["admin_exists"] = bool(admin)
             info["admin_email"] = admin.email if admin else None
+            if admin:
+                info["admin_has_hash"] = bool(admin.password_hash)
+                info["admin_hash_len"] = len(admin.password_hash) if admin.password_hash else 0
+                try:
+                    info["admin_password_ok"] = verify_password("admin123", admin.password_hash)
+                except Exception as ve:
+                    info["admin_password_ok"] = f"error: {ve}"
             cfg = db.query(SystemConfig).filter(SystemConfig.key == "system_api_key").first()
             info["system_api_key"] = bool(cfg and cfg.value)
         finally:
