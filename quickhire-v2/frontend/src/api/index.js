@@ -19,7 +19,16 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    const msg = error.response?.data?.detail || error.message || '请求失败'
+    let msg = '请求失败'
+    const detail = error.response?.data?.detail
+    if (Array.isArray(detail)) {
+      // Pydantic 422 validation errors
+      msg = detail.map(d => d.msg || d.message).filter(Boolean).join('；')
+    } else if (typeof detail === 'string') {
+      msg = detail
+    } else if (error.message) {
+      msg = error.message
+    }
     ElMessage.error(msg)
     if (error.response?.status === 401) {
       localStorage.removeItem('token')
