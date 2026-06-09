@@ -32,7 +32,13 @@ npm ci --legacy-peer-deps
 npm run build
 
 echo "=== Restarting backend ==="
+# Clear stale Python bytecode cache
+find "$BACKEND_DIR" -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+find "$BACKEND_DIR" -name "*.pyc" -delete 2>/dev/null || true
 chown -R quickhire:quickhire "$BACKEND_DIR" 2>/dev/null || true
-systemctl restart quickhire
+sudo systemctl restart quickhire 2>/dev/null || systemctl restart quickhire 2>/dev/null || {
+    echo "WARNING: Could not restart quickhire service. Trying pkill..."
+    sudo pkill -f "uvicorn main:app" 2>/dev/null || pkill -f "uvicorn main:app" 2>/dev/null || true
+}
 
 echo "=== Deploy complete ==="
