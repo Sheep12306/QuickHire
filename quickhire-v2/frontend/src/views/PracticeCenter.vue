@@ -199,9 +199,10 @@ async function handleSaveAll() {
     generatedQuestions.value.forEach(q => {
       if (savedMap[q.question]) q.id = savedMap[q.question]
     })
-    ElMessage.success('已存入题库')
-    // Refresh browse list so saved questions appear immediately
-    if (activeTab.value === 'browse') loadBrowse()
+    ElMessage.success('已存入题库，切换到「题库浏览」查看')
+    // Refresh browse list in background
+    browsePage.value = 1
+    loadBrowse()
   } catch { ElMessage.error('保存失败') }
   finally { saving.value = false }
 }
