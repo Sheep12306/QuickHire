@@ -51,7 +51,7 @@
                 全部存入题库
               </el-button>
             </div>
-            <q-card v-for="(q, i) in generatedQuestions" :key="'g'+i" :q="q" :idx="i+1" />
+            <q-card v-for="(q, i) in generatedQuestions" :key="'g'+i" :q="q" :idx="i+1" :show-fav="auth.isLoggedIn && !!q.id" @fav="handleFavorite(q)" />
           </div>
         </el-tab-pane>
 
@@ -150,7 +150,7 @@ export default {
 </script>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '../stores/auth'
 import NavBar from '../components/layout/NavBar.vue'
@@ -192,7 +192,13 @@ async function handleGenerate() {
 async function handleSaveAll() {
   saving.value = true
   try {
-    await savePracticeQuestions({ position: genPosition.value.trim(), questions: generatedQuestions.value })
+    const { data } = await savePracticeQuestions({ position: genPosition.value.trim(), questions: generatedQuestions.value })
+    // Assign real DB IDs so questions can be favorited
+    const savedMap = {}
+    ;(data.questions || []).forEach(s => { savedMap[s.question] = s.id })
+    generatedQuestions.value.forEach(q => {
+      if (savedMap[q.question]) q.id = savedMap[q.question]
+    })
     ElMessage.success('已存入题库')
   } catch { ElMessage.error('保存失败') }
   finally { saving.value = false }
@@ -222,7 +228,14 @@ async function handleFavorite(q) {
     await toggleFavorite(q.id)
     q.favorited = !q.favorited
     ElMessage.success(q.favorited ? '已收藏' : '已取消收藏')
-    if (!q.favorited) favList.value = favList.value.filter(f => f.id !== q.id)
+    if (q.favorited) {
+      // Add to favorites list for current session
+      if (!favList.value.find(f => f.id === q.id)) {
+        favList.value.push({ ...q, _show: false })
+      }
+    } else {
+      favList.value = favList.value.filter(f => f.id !== q.id)
+    }
   } catch { ElMessage.error('操作失败') }
 }
 
@@ -237,6 +250,10 @@ async function loadFavorites() {
 onMounted(() => {
   loadBrowse()
   if (auth.isLoggedIn) loadFavorites()
+})
+
+watch(activeTab, (tab) => {
+  if (tab === 'favorites' && auth.isLoggedIn) loadFavorites()
 })
 </script>
 
