@@ -200,6 +200,8 @@ async function handleSaveAll() {
       if (savedMap[q.question]) q.id = savedMap[q.question]
     })
     ElMessage.success('已存入题库')
+    // Refresh browse list so saved questions appear immediately
+    if (activeTab.value === 'browse') loadBrowse()
   } catch { ElMessage.error('保存失败') }
   finally { saving.value = false }
 }
@@ -253,6 +255,7 @@ onMounted(() => {
 })
 
 watch(activeTab, (tab) => {
+  if (tab === 'browse') loadBrowse()
   if (tab === 'favorites' && auth.isLoggedIn) loadFavorites()
 })
 </script>
