@@ -20,119 +20,153 @@
 
         <!-- Form side -->
         <div class="panel-form">
-          <el-tabs v-model="activeTab" class="login-tabs" stretch>
-            <el-tab-pane label="登录" name="login">
-              <!-- Password mode -->
-              <el-form v-if="loginMode === 'password'" @submit.prevent="handleLogin" class="auth-form">
-                <el-form-item>
-                  <el-input
-                    v-model="loginForm.credential"
-                    placeholder="邮箱或手机号"
-                    size="large"
-                  >
-                    <template #prefix><el-icon><User /></el-icon></template>
-                  </el-input>
-                </el-form-item>
-                <el-form-item>
-                  <el-input
-                    v-model="loginForm.password"
-                    type="password"
-                    placeholder="密码"
-                    size="large"
-                    show-password
-                    @keyup.enter="handleLogin"
-                  >
-                    <template #prefix><el-icon><Lock /></el-icon></template>
-                  </el-input>
-                </el-form-item>
-                <el-form-item>
-                  <el-button type="primary" size="large" @click="handleLogin" :loading="loading" class="submit-btn">
-                    登 录
-                  </el-button>
-                </el-form-item>
-                <p class="mode-toggle">
-                  <el-button link type="primary" @click="loginMode = 'code'">验证码登录</el-button>
-                </p>
-              </el-form>
+          <!-- Guest login (primary) -->
+          <div class="guest-section">
+            <div class="guest-icon">
+              <el-icon :size="26"><MagicStick /></el-icon>
+            </div>
+            <h2 class="guest-title">无需注册，立即体验</h2>
+            <p class="guest-desc">AI 简历优化 · 面试教练 · 面试刷题</p>
+            <el-button
+              type="primary"
+              size="large"
+              class="guest-btn"
+              :loading="guestLoading"
+              @click="handleGuestLogin"
+            >
+              游客登录 · 立即体验
+            </el-button>
+          </div>
 
-              <!-- Verification code mode -->
-              <el-form v-else @submit.prevent="handleCodeLogin" class="auth-form">
-                <el-form-item>
-                  <el-input
-                    v-model="codeForm.email"
-                    placeholder="邮箱"
-                    size="large"
-                  >
-                    <template #prefix><el-icon><Message /></el-icon></template>
-                  </el-input>
-                </el-form-item>
-                <el-form-item>
-                  <el-input
-                    v-model="codeForm.code"
-                    placeholder="验证码"
-                    size="large"
-                    @keyup.enter="handleCodeLogin"
-                  >
-                    <template #prefix><el-icon><Key /></el-icon></template>
-                    <template #suffix>
-                      <el-button
-                        link
-                        type="primary"
-                        :disabled="countdown > 0"
-                        @click="sendVerificationCode"
-                        style="font-size:0.85rem"
+          <!-- Divider -->
+          <div class="account-divider">
+            <span>或使用账号登录</span>
+          </div>
+
+          <!-- Account login (secondary, smaller) -->
+          <div class="account-section">
+            <el-button
+              v-if="!showAccountForm"
+              text
+              type="primary"
+              class="account-toggle"
+              @click="showAccountForm = true"
+            >
+              账号登录 / 注册
+            </el-button>
+
+            <template v-else>
+              <el-tabs v-model="activeTab" class="login-tabs" stretch>
+                <el-tab-pane label="登录" name="login">
+                  <!-- Password mode -->
+                  <el-form v-if="loginMode === 'password'" @submit.prevent="handleLogin" class="auth-form">
+                    <el-form-item>
+                      <el-input
+                        v-model="loginForm.credential"
+                        placeholder="邮箱或手机号"
                       >
-                        {{ countdown > 0 ? `${countdown}s` : '获取验证码' }}
+                        <template #prefix><el-icon><User /></el-icon></template>
+                      </el-input>
+                    </el-form-item>
+                    <el-form-item>
+                      <el-input
+                        v-model="loginForm.password"
+                        type="password"
+                        placeholder="密码"
+                        show-password
+                        @keyup.enter="handleLogin"
+                      >
+                        <template #prefix><el-icon><Lock /></el-icon></template>
+                      </el-input>
+                    </el-form-item>
+                    <el-form-item>
+                      <el-button type="primary" @click="handleLogin" :loading="loading" class="submit-btn">
+                        登 录
                       </el-button>
-                    </template>
-                  </el-input>
-                </el-form-item>
-                <el-form-item>
-                  <el-button type="primary" size="large" @click="handleCodeLogin" :loading="loading" class="submit-btn">
-                    登 录
-                  </el-button>
-                </el-form-item>
-                <p class="mode-toggle">
-                  <el-button link type="primary" @click="loginMode = 'password'">密码登录</el-button>
-                </p>
-              </el-form>
-            </el-tab-pane>
+                    </el-form-item>
+                    <p class="mode-toggle">
+                      <el-button link type="primary" @click="loginMode = 'code'">验证码登录</el-button>
+                    </p>
+                  </el-form>
 
-            <el-tab-pane label="注册" name="register">
-              <el-form @submit.prevent="handleRegister" class="auth-form">
-                <el-form-item>
-                  <el-input v-model="registerForm.email" placeholder="邮箱（选填）" size="large">
-                    <template #prefix><el-icon><Message /></el-icon></template>
-                  </el-input>
-                </el-form-item>
-                <el-form-item>
-                  <el-input v-model="registerForm.phone" placeholder="手机号（选填）" size="large">
-                    <template #prefix><el-icon><Phone /></el-icon></template>
-                  </el-input>
-                </el-form-item>
-                <el-form-item>
-                  <el-input v-model="registerForm.display_name" placeholder="您的称呼" size="large">
-                    <template #prefix><el-icon><UserFilled /></el-icon></template>
-                  </el-input>
-                </el-form-item>
-                <el-form-item>
-                  <el-input v-model="registerForm.password" type="password" placeholder="密码（至少6位）" size="large" show-password>
-                    <template #prefix><el-icon><Lock /></el-icon></template>
-                  </el-input>
-                </el-form-item>
-                <el-form-item>
-                  <el-input v-model="registerForm.confirmPassword" type="password" placeholder="确认密码" size="large" show-password>
-                    <template #prefix><el-icon><Lock /></el-icon></template>
-                  </el-input>
-                </el-form-item>
-                <el-form-item>
-                  <el-button type="primary" size="large" @click="handleRegister" :loading="loading" class="submit-btn">
-                    注 册
-                  </el-button>
-                </el-form-item>
-              </el-form>
-            </el-tab-pane>
-          </el-tabs>
+                  <!-- Verification code mode -->
+                  <el-form v-else @submit.prevent="handleCodeLogin" class="auth-form">
+                    <el-form-item>
+                      <el-input
+                        v-model="codeForm.email"
+                        placeholder="邮箱"
+                      >
+                        <template #prefix><el-icon><Message /></el-icon></template>
+                      </el-input>
+                    </el-form-item>
+                    <el-form-item>
+                      <el-input
+                        v-model="codeForm.code"
+                        placeholder="验证码"
+                        @keyup.enter="handleCodeLogin"
+                      >
+                        <template #prefix><el-icon><Key /></el-icon></template>
+                        <template #suffix>
+                          <el-button
+                            link
+                            type="primary"
+                            :disabled="countdown > 0"
+                            @click="sendVerificationCode"
+                            style="font-size:0.85rem"
+                          >
+                            {{ countdown > 0 ? `${countdown}s` : '获取验证码' }}
+                          </el-button>
+                        </template>
+                      </el-input>
+                    </el-form-item>
+                    <el-form-item>
+                      <el-button type="primary" @click="handleCodeLogin" :loading="loading" class="submit-btn">
+                        登 录
+                      </el-button>
+                    </el-form-item>
+                    <p class="mode-toggle">
+                      <el-button link type="primary" @click="loginMode = 'password'">密码登录</el-button>
+                    </p>
+                  </el-form>
+                </el-tab-pane>
+
+                <el-tab-pane label="注册" name="register">
+                  <el-form @submit.prevent="handleRegister" class="auth-form">
+                    <el-form-item>
+                      <el-input v-model="registerForm.email" placeholder="邮箱（选填）">
+                        <template #prefix><el-icon><Message /></el-icon></template>
+                      </el-input>
+                    </el-form-item>
+                    <el-form-item>
+                      <el-input v-model="registerForm.phone" placeholder="手机号（选填）">
+                        <template #prefix><el-icon><Phone /></el-icon></template>
+                      </el-input>
+                    </el-form-item>
+                    <el-form-item>
+                      <el-input v-model="registerForm.display_name" placeholder="您的称呼">
+                        <template #prefix><el-icon><UserFilled /></el-icon></template>
+                      </el-input>
+                    </el-form-item>
+                    <el-form-item>
+                      <el-input v-model="registerForm.password" type="password" placeholder="密码（至少6位）" show-password>
+                        <template #prefix><el-icon><Lock /></el-icon></template>
+                      </el-input>
+                    </el-form-item>
+                    <el-form-item>
+                      <el-input v-model="registerForm.confirmPassword" type="password" placeholder="确认密码" show-password>
+                        <template #prefix><el-icon><Lock /></el-icon></template>
+                      </el-input>
+                    </el-form-item>
+                    <el-form-item>
+                      <el-button type="primary" @click="handleRegister" :loading="loading" class="submit-btn">
+                        注 册
+                      </el-button>
+                    </el-form-item>
+                  </el-form>
+                </el-tab-pane>
+              </el-tabs>
+            </template>
+          </div>
         </div>
       </div>
     </main>
@@ -151,6 +185,8 @@ const auth = useAuthStore()
 const router = useRouter()
 const route = useRoute()
 const loading = ref(false)
+const guestLoading = ref(false)
+const showAccountForm = ref(false)
 const activeTab = ref('login')
 const loginMode = ref('password')
 const countdown = ref(0)
@@ -160,6 +196,18 @@ const codeForm = reactive({ email: '', code: '' })
 const registerForm = reactive({
   email: '', phone: '', display_name: '', password: '', confirmPassword: '',
 })
+
+async function handleGuestLogin() {
+  guestLoading.value = true
+  try {
+    await auth.guestLogin()
+    ElMessage.success('已进入体验模式')
+    const redirect = route.query.redirect
+    router.push(redirect || '/resume-optimizer')
+  } finally {
+    guestLoading.value = false
+  }
+}
 
 async function handleLogin() {
   if (!loginForm.credential || !loginForm.password) {
@@ -314,11 +362,74 @@ async function handleRegister() {
   justify-content: center;
 }
 
+/* ── Guest login (primary) ──────────────── */
+.guest-section {
+  text-align: center;
+}
+.guest-icon {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 1rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  background: linear-gradient(135deg, var(--green-500), var(--green-600));
+  box-shadow: 0 8px 20px rgba(5, 150, 105, 0.25);
+}
+.guest-title {
+  font-size: 1.35rem;
+  font-weight: 800;
+  margin: 0 0 0.5rem;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+.guest-desc {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin: 0 0 1.5rem;
+}
+.guest-btn {
+  width: 100%;
+  max-width: 320px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  padding: 14px 0;
+  letter-spacing: 0.05em;
+  border-radius: var(--radius-md);
+}
+
+/* ── Account login (secondary) ──────────── */
+.account-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 1.75rem 0 0.75rem;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+.account-divider::before,
+.account-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border-light);
+}
+
+.account-section {
+  text-align: center;
+}
+.account-toggle {
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
 .login-tabs :deep(.el-tabs__header) {
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
 }
 .login-tabs :deep(.el-tabs__item) {
-  font-size: 1rem;
+  font-size: 0.9rem;
   font-weight: 600;
   color: var(--text-muted);
 }
@@ -330,13 +441,19 @@ async function handleRegister() {
 }
 
 .auth-form {
-  margin-top: 0.5rem;
+  margin-top: 0.25rem;
+}
+.auth-form :deep(.el-input__wrapper) {
+  padding: 1px 11px;
+}
+.auth-form :deep(.el-input__inner) {
+  font-size: 0.9rem;
 }
 .submit-btn {
   width: 100%;
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 700;
-  padding: 12px 0;
+  padding: 10px 0;
   letter-spacing: 0.1em;
 }
 
@@ -376,8 +493,9 @@ async function handleRegister() {
   .panel-form {
     padding: 1.25rem 1rem;
   }
+  .guest-title { font-size: 1.2rem; }
   .login-tabs :deep(.el-tabs__item) {
-    font-size: 0.9rem;
+    font-size: 0.85rem;
   }
 }
 </style>

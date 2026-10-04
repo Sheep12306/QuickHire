@@ -51,6 +51,21 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
     )
 
 
+@router.post("/guest-login", response_model=TokenResponse)
+def guest_login(db: Session = Depends(get_db)):
+    try:
+        user = AuthService.create_guest(db)
+    except Exception as e:
+        logging.error(f"Unexpected error in /guest-login: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"服务器内部错误: {str(e)}")
+
+    token = create_access_token({"sub": str(user.id), "role": user.role})
+    return TokenResponse(
+        access_token=token,
+        user=UserResponse.model_validate(user),
+    )
+
+
 @router.post("/send-code")
 def send_code(req: SendCodeRequest, db: Session = Depends(get_db)):
     if not AuthService.validate_email(req.email):

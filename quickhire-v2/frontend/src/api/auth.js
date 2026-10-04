@@ -19,3 +19,7 @@ export function sendCode(email) {
 export function verifyCodeLogin(email, code) {
   return api.post('/auth/verify-code-login', { email, code })
 }
+
+export function guestLogin() {
+  return api.post('/auth/guest-login')
+}

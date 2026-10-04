@@ -1,4 +1,5 @@
 import re
+import uuid
 from datetime import datetime
 from sqlalchemy.orm import Session
 from models import User
@@ -83,6 +84,23 @@ class AuthService:
             raise AuthError("密码错误")
 
         user.last_login_at = datetime.utcnow()
+        db.commit()
+        db.refresh(user)
+        return user
+
+    @staticmethod
+    def create_guest(db: Session) -> User:
+        """Create a temporary guest account for one-click trial without signup."""
+        suffix = uuid.uuid4().hex[:4].upper()
+        user = User(
+            email=None,
+            phone=None,
+            password_hash="",  # guest accounts cannot log in with a password
+            display_name=f"游客{suffix}",
+            role="guest",
+            is_active=True,
+        )
+        db.add(user)
         db.commit()
         db.refresh(user)
         return user
